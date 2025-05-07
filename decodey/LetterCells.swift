@@ -17,7 +17,7 @@ struct EncryptedLetterCell: View {
     
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
                 // Container
                 RoundedRectangle(cornerRadius: 8)
                     .fill(backgroundColor)
@@ -25,21 +25,28 @@ struct EncryptedLetterCell: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(isSelected ? colors.accent : Color.clear, lineWidth: 2)
                     )
-                    .frame(minWidth: 40, minHeight: 40)
                 
-                // Letter
+                // Letter - centered in the cell
                 Text(String(letter))
-                    .font(fonts.letterCell())
+                    .font(fonts.encryptedLetterCell())
                     .foregroundColor(textColor)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
                 // Frequency counter in bottom right
                 if frequency > 0 && !isGuessed {
-                    Text("\(frequency)")
-                        .font(fonts.frequencyCounter())
-                        .foregroundColor(textColor.opacity(0.7))
-                        .offset(x: -4, y: -4)
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Text("\(frequency)")
+                                .font(fonts.frequencyIndicator())
+                                .foregroundColor(textColor.opacity(0.7))
+                                .padding(4)
+                        }
+                    }
                 }
             }
+            .frame(minWidth: 40, minHeight: 40)
             .accessibilityLabel("Letter \(letter), frequency \(frequency)")
             .accessibilityHint(getAccessibilityHint())
         }
@@ -50,13 +57,10 @@ struct EncryptedLetterCell: View {
     // Background color based on state and color scheme
     private var backgroundColor: Color {
         if isSelected {
-            // Selected state - use the selected background color
             return colors.selectedBackground(for: colorScheme, isEncrypted: true)
         } else if isGuessed {
-            // Guessed state
             return colors.guessedBackground(for: colorScheme)
         } else {
-            // Normal state - match body background
             return colors.primaryBackground(for: colorScheme)
         }
     }
@@ -64,13 +68,10 @@ struct EncryptedLetterCell: View {
     // Text color based on state and color scheme
     private var textColor: Color {
         if isSelected {
-            // Selected state - invert colors
             return colors.selectedText(for: colorScheme)
         } else if isGuessed {
-            // Guessed state
             return colors.guessedText(for: colorScheme)
         } else {
-            // Normal state - use specified colors
             return colors.encryptedText(for: colorScheme)
         }
     }
@@ -98,23 +99,28 @@ struct GuessLetterCell: View {
     // Use design systems
     private let colors = ColorSystem.shared
     private let fonts = FontSystem.shared
+    private let design = DesignSystem.shared
     
     var body: some View {
         Button(action: action) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(backgroundColor)
-                .overlay(
-                    Text(String(letter))
-                        .font(fonts.letterCell())
-                        .foregroundColor(textColor)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                )
-                .frame(minWidth: 36, minHeight: 36)
-                .accessibilityLabel("Letter \(letter)")
-                .accessibilityHint(isUsed ? "Already used" : "Tap to guess")
+            ZStack {
+                // Container
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(backgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+                
+                // Letter - centered in the cell
+                Text(String(letter))
+                    .font(fonts.guessLetterCell())
+                    .foregroundColor(textColor)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(minWidth: 36, minHeight: 36)
+            .accessibilityLabel("Letter \(letter)")
+            .accessibilityHint(isUsed ? "Already used" : "Tap to guess")
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(isUsed)

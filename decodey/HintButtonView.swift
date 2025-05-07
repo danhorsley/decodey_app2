@@ -6,13 +6,73 @@ struct HintButtonView: View {
     let isDarkMode: Bool
     let onHintRequested: () -> Void
     
-    // Use environment values
-    @Environment(\.colorScheme) var colorScheme
-    
     // Use design systems
-    private let design = DesignSystem.shared
     private let colors = ColorSystem.shared
     private let fonts = FontSystem.shared
+    private let design = DesignSystem.shared
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        Button(action: onHintRequested) {
+            hintButtonContent
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isLoading || remainingHints <= 0)
+        .accessibilityLabel("Hint Button")
+        .accessibilityHint("You have \(remainingHints) hint tokens remaining")
+    }
+    
+    // Extract content into a separate computed property
+    private var hintButtonContent: some View {
+        VStack(spacing: 4) {
+            // Show spinner or hint count
+            if isLoading {
+                loadingView
+            } else {
+                hintCountView
+            }
+            
+            // Label underneath
+            Text("HINT TOKENS")
+                .font(fonts.hintLabel())
+                .foregroundColor(.secondary)
+        }
+        .frame(width: design.hintButtonWidth, height: design.hintButtonHeight)
+        .background(buttonBackground)
+        .overlay(buttonBorder)
+        .cornerRadius(10)
+    }
+    
+    // Loading indicator
+    private var loadingView: some View {
+        ProgressView()
+            .scaleEffect(1.2)
+            .progressViewStyle(CircularProgressViewStyle(tint: statusColor))
+            .frame(height: 30)
+            .padding(.vertical, 4)
+    }
+    
+    // Hint count display
+    private var hintCountView: some View {
+        Text("\(remainingHints)")
+            .font(fonts.hintValue())
+            .foregroundColor(statusColor)
+            .frame(height: 30)
+    }
+    
+    // Background color
+    private var buttonBackground: some View {
+        colorScheme == .dark ?
+            Color.black.opacity(0.3) :
+            Color.gray.opacity(0.1)
+    }
+    
+    // Border around button
+    private var buttonBorder: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .stroke(statusColor, lineWidth: 2)
+    }
     
     // Determine the status color based on remaining hints
     private var statusColor: Color {
@@ -23,42 +83,5 @@ struct HintButtonView: View {
         } else {
             return colors.hintButtonSafe(for: colorScheme)
         }
-    }
-    
-    var body: some View {
-        Button(action: onHintRequested) {
-            VStack(spacing: 4) {
-                // Show spinner when hint is loading
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(1.2)
-                        .progressViewStyle(CircularProgressViewStyle(tint: statusColor))
-                        .frame(height: 30)
-                        .padding(.vertical, 4)
-                } else {
-                    // Hint text with monospaced font
-                    Text("\(remainingHints)")
-                        .font(fonts.hintText())
-                        .foregroundColor(statusColor)
-                        .frame(height: 30)
-                }
-                
-                // Label underneath
-                Text("HINT TOKENS")
-                    .font(fonts.hintLabel())
-                    .foregroundColor(colors.secondaryText(for: colorScheme))
-            }
-            .frame(width: design.hintButtonWidth, height: design.hintButtonHeight)
-            .background(colorScheme == .dark ? Color.black.opacity(0.3) : Color.gray.opacity(0.1))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(statusColor, lineWidth: 2)
-            )
-            .cornerRadius(10)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(isLoading || remainingHints <= 0)
-        .accessibilityLabel("Hint Button")
-        .accessibilityHint("You have \(remainingHints) hint tokens remaining")
     }
 }

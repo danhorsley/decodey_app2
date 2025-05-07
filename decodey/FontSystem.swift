@@ -6,132 +6,100 @@ struct FontSystem {
     
     // MARK: - Font Family
     
-    // The primary font for the application (Courier New)
+    // Base function for Courier New font
     private func courierNew(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         Font.custom("Courier New", size: size).weight(weight)
     }
     
-    // Fallback to system monospaced if Courier New isn't available
-    private func monospaced(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        Font.system(size: size, weight: weight, design: .monospaced)
-    }
-    
-    // MARK: - Text Styles
-    
-    // Display and title styles
-    func largeTitle(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 34, weight: weight)
-    }
-    
-    func title1(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 28, weight: weight)
-    }
-    
-    func title2(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 22, weight: weight)
-    }
-    
-    func title3(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 20, weight: weight)
-    }
-    
-    // Body text styles
-    func body(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 16, weight: weight)
-    }
-    
-    func callout(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 14, weight: weight)
-    }
-    
-    func footnote(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 12, weight: weight)
-    }
-    
-    func caption(bold: Bool = false) -> Font {
-        let weight: Font.Weight = bold ? .bold : .regular
-        return courierNew(size: 10, weight: weight)
-    }
-    
     // MARK: - Game-Specific Fonts
     
-    // Encrypted text display
-    func encryptedDisplay(size: CGFloat? = nil) -> Font {
-        courierNew(size: size ?? 18, weight: .regular)
+    // Letter cells
+    func encryptedLetterCell() -> Font {
+        courierNew(size: 22, weight: .semibold)
     }
     
-    // Solution text display
-    func solutionDisplay(size: CGFloat? = nil) -> Font {
-        courierNew(size: size ?? 18, weight: .bold)
+    func guessLetterCell() -> Font {
+        courierNew(size: 22, weight: .semibold)
     }
     
-    // Letter cell text
-    func letterCell(size: CGFloat? = nil) -> Font {
-        courierNew(size: size ?? 22, weight: .bold)
+    // Frequency indicator
+    func frequencyIndicator() -> Font {
+        courierNew(size: 10, weight: .medium)
     }
     
-    // Frequency counter
-    func frequencyCounter() -> Font {
-        courierNew(size: 10, weight: .bold)
+    // Display text
+    func encryptedDisplayText() -> Font {
+        courierNew(size: 18, weight: .regular)
     }
     
-    // Hint button text
-    func hintText() -> Font {
-        courierNew(size: 24, weight: .bold)
+    func solutionDisplayText() -> Font {
+        courierNew(size: 18, weight: .semibold)
+    }
+    
+    // Hint button
+    func hintValue() -> Font {
+        courierNew(size: 24, weight: .semibold)
     }
     
     func hintLabel() -> Font {
         courierNew(size: 10, weight: .medium)
     }
     
+    // UI Elements
+    func gameTitle() -> Font {
+        courierNew(size: 34, weight: .bold)
+    }
+    
+    func sectionTitle() -> Font {
+        courierNew(size: 16, weight: .semibold)
+    }
+    
+    func caption() -> Font {
+        courierNew(size: 10, weight: .regular)
+    }
+    
+    func buttonText() -> Font {
+        courierNew(size: 18, weight: .semibold)
+    }
+    
     // Score display
-    func scoreLabel() -> Font {
-        courierNew(size: 12, weight: .bold)
-    }
-    
     func scoreValue() -> Font {
-        courierNew(size: 40, weight: .bold)
+        courierNew(size: 40, weight: .semibold)
     }
     
-    // MARK: - Responsive Fonts
+    func scoreLabel() -> Font {
+        courierNew(size: 12, weight: .medium)
+    }
     
-    // Helper method to get font size based on screen category
-    func responsiveSize(base: CGFloat, for screenCategory: DesignSystem.ScreenSizeCategory) -> CGFloat {
+    // MARK: - Responsive Fonts for Different Screen Sizes
+    
+    func encryptedLetterCellForSize(_ screenCategory: DesignSystem.ScreenSizeCategory) -> Font {
+        let baseSize: CGFloat
         switch screenCategory {
         case .small:
-            return base - 2
+            baseSize = 20
         case .medium:
-            return base
+            baseSize = 22
         case .large:
-            return base + 2
+            baseSize = 24
         default:
-            return base + 2
+            baseSize = 24
         }
+        return courierNew(size: baseSize, weight: .semibold)
     }
     
-    // Get responsive letter cell font
-    func responsiveLetterCell(for screenCategory: DesignSystem.ScreenSizeCategory) -> Font {
-        let size = responsiveSize(base: 22, for: screenCategory)
-        return letterCell(size: size)
-    }
-    
-    // Get responsive display font
-    func responsiveDisplay(for screenCategory: DesignSystem.ScreenSizeCategory, isSolution: Bool = false) -> Font {
-        let size = responsiveSize(base: 18, for: screenCategory)
-        return isSolution ? solutionDisplay(size: size) : encryptedDisplay(size: size)
+    func displayTextForSize(_ screenCategory: DesignSystem.ScreenSizeCategory, isSolution: Bool) -> Font {
+        let baseSize: CGFloat
+        switch screenCategory {
+        case .small:
+            baseSize = 16
+        case .medium:
+            baseSize = 18
+        case .large:
+            baseSize = 20
+        default:
+            baseSize = 20
+        }
+        return courierNew(size: baseSize, weight: isSolution ? .semibold : .regular)
     }
 }
-//
-//  FontSystem.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-
