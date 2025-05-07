@@ -6,19 +6,22 @@ struct HintButtonView: View {
     let isDarkMode: Bool
     let onHintRequested: () -> Void
     
-    // Convert remaining hint count to text representation
-    private var hintText: String {
-        String(remainingHints)
-    }
+    // Use environment values
+    @Environment(\.colorScheme) var colorScheme
+    
+    // Use design systems
+    private let design = DesignSystem.shared
+    private let colors = ColorSystem.shared
+    private let fonts = FontSystem.shared
     
     // Determine the status color based on remaining hints
     private var statusColor: Color {
         if remainingHints <= 1 {
-            return .red
+            return colors.hintButtonDanger(for: colorScheme)
         } else if remainingHints <= 3 {
-            return .orange
+            return colors.hintButtonWarning(for: colorScheme)
         } else {
-            return .accentColor
+            return colors.hintButtonSafe(for: colorScheme)
         }
     }
     
@@ -34,21 +37,19 @@ struct HintButtonView: View {
                         .padding(.vertical, 4)
                 } else {
                     // Hint text with monospaced font
-                    Text(hintText)
-                        .font(.system(.title, design: .monospaced))
-                        .fontWeight(.bold)
+                    Text("\(remainingHints)")
+                        .font(fonts.hintText())
                         .foregroundColor(statusColor)
                         .frame(height: 30)
                 }
                 
                 // Label underneath
                 Text("HINT TOKENS")
-                    .font(.system(size: 10))
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    .font(fonts.hintLabel())
+                    .foregroundColor(colors.secondaryText(for: colorScheme))
             }
-            .frame(width: 110, height: 70)
-            .background(isDarkMode ? Color.black.opacity(0.3) : Color.gray.opacity(0.1))
+            .frame(width: design.hintButtonWidth, height: design.hintButtonHeight)
+            .background(colorScheme == .dark ? Color.black.opacity(0.3) : Color.gray.opacity(0.1))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(statusColor, lineWidth: 2)
@@ -61,10 +62,3 @@ struct HintButtonView: View {
         .accessibilityHint("You have \(remainingHints) hint tokens remaining")
     }
 }
-//
-//  HintButtonView.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-

@@ -10,8 +10,10 @@ struct EncryptedLetterCell: View {
     // Use environment values
     @Environment(\.colorScheme) var colorScheme
     
-    // Use color system
+    // Use design systems
     private let colors = ColorSystem.shared
+    private let fonts = FontSystem.shared
+    private let design = DesignSystem.shared
     
     var body: some View {
         Button(action: action) {
@@ -27,15 +29,13 @@ struct EncryptedLetterCell: View {
                 
                 // Letter
                 Text(String(letter))
-                    .font(.system(.title3, design: .monospaced))
-                    .fontWeight(.bold)
+                    .font(fonts.letterCell())
                     .foregroundColor(textColor)
                 
                 // Frequency counter in bottom right
                 if frequency > 0 && !isGuessed {
                     Text("\(frequency)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
+                        .font(fonts.frequencyCounter())
                         .foregroundColor(textColor.opacity(0.7))
                         .offset(x: -4, y: -4)
                 }
@@ -95,8 +95,9 @@ struct GuessLetterCell: View {
     // Use environment values
     @Environment(\.colorScheme) var colorScheme
     
-    // Use color system
+    // Use design systems
     private let colors = ColorSystem.shared
+    private let fonts = FontSystem.shared
     
     var body: some View {
         Button(action: action) {
@@ -104,8 +105,7 @@ struct GuessLetterCell: View {
                 .fill(backgroundColor)
                 .overlay(
                     Text(String(letter))
-                        .font(.system(.title3, design: .monospaced))
-                        .fontWeight(.bold)
+                        .font(fonts.letterCell())
                         .foregroundColor(textColor)
                 )
                 .overlay(
