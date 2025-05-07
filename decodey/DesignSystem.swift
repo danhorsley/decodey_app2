@@ -88,26 +88,26 @@ struct DesignSystem {
     var gridColumnsPortrait: Int {
         switch currentScreenSize {
         case .small:
-            return 5
-        case .medium, .large:
             return 6
+        case .medium, .large:
+            return 5
         case .ipadSmall, .ipadMedium:
-            return 8
+            return 5
         case .ipadLarge, .mac:
-            return 10
+            return 5
         }
     }
     
     var gridColumnsLandscape: Int {
         switch currentScreenSize {
         case .small, .medium:
-            return 8
+            return 6
         case .large:
-            return 9
+            return 5
         case .ipadSmall:
-            return 10
+            return 5
         case .ipadMedium, .ipadLarge, .mac:
-            return 12
+            return 5
         }
     }
     

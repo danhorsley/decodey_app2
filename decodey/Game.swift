@@ -1,32 +1,33 @@
 import Foundation
 
 struct Game {
-    //Game state
+    // Game state
     var encrypted: String
     var solution: String
     var currentDisplay: String
-    var selectedLetter: String?
+    var selectedLetter: Character? // Changed to Character? to allow nil
     var mistakes: Int
-    var maxMistakes:Int
+    var maxMistakes: Int
     var hasWon: Bool
     var hasLost: Bool
     
-    //Game ID for db ref
+    // Game ID for db ref
     var gameId: String?
     
-    //mapping dictionaries
+    // Mapping dictionaries
     var mapping: [Character:Character]
     var correctMappings: [Character:Character]
     
     var letterFrequency: [Character:Int]
     
-    //guessed mappings
+    // Guessed mappings
     var guessedMappings: [Character:Character]
-    //timestamp tracking
+    // Timestamp tracking
     var startTime: Date
     var lastUpdateTime: Date
-    // difficulty level
+    // Difficulty level
     var difficulty: String
+    
     // Initialize with default values for a new game
     init() {
         // Default initialization
@@ -50,17 +51,43 @@ struct Game {
         // Create a new game with a random quote
         setupNewGame()
     }
+    
+    // Custom initializer for loading from DB
+    init(gameId: String, encrypted: String, solution: String, currentDisplay: String, mapping: [Character:Character], correctMappings: [Character:Character], guessedMappings: [Character:Character], mistakes: Int, maxMistakes: Int, hasWon: Bool, hasLost: Bool, difficulty: String, startTime: Date, lastUpdateTime: Date) {
+        self.gameId = gameId
+        self.encrypted = encrypted
+        self.solution = solution
+        self.currentDisplay = currentDisplay
+        self.selectedLetter = nil
+        self.mistakes = mistakes
+        self.maxMistakes = maxMistakes
+        self.hasWon = hasWon
+        self.hasLost = hasLost
+        self.mapping = mapping
+        self.correctMappings = correctMappings
+        self.letterFrequency = [:]
+        self.guessedMappings = guessedMappings
+        self.startTime = startTime
+        self.lastUpdateTime = lastUpdateTime
+        self.difficulty = difficulty
+        
+        // Calculate letter frequency from encrypted text
+        for char in encrypted where char.isLetter {
+            letterFrequency[char, default: 0] += 1
+        }
+    }
+    
     mutating func setupNewGame() {
         do {
-            //Get a random quote from the db
-            let (quoteText, quoteAuthor,_) = try DatabaseManager.shared.getRandomQuote()
+            // Get a random quote from the db
+            let (quoteText, quoteAuthor, _) = try DatabaseManager.shared.getRandomQuote()
             
-            //Set the solution and the difficulty
-            self.solution = quoteText.uppercaased()
+            // Set the solution and the difficulty
+            self.solution = quoteText.uppercased() // Fixed typo from uppercaased to uppercased
             self.difficulty = "medium"
             self.maxMistakes = difficultyToMaxMistakes(self.difficulty)
             
-            //Set up the Game
+            // Set up the Game
             setupGameWithSolution(solution)
             
         } catch {
@@ -68,10 +95,9 @@ struct Game {
             self.solution = "MANNERS MAKETH MAN"
             setupGameWithSolution(solution)
         }
-            
-            
-        }
-    //Converts difficulty string to max mistakes int
+    }
+    
+    // Converts difficulty string to max mistakes int
     private func difficultyToMaxMistakes(_ difficulty: String) -> Int {
         switch difficulty {
         case "easy":
@@ -87,28 +113,28 @@ struct Game {
     
     // Set up a game with a given solution
     mutating func setupGameWithSolution(_ solution: String) {
-        //Generate a mapping for encrytion
+        // Generate a mapping for encryption
         var mapping: [Character: Character] = [:]
         let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         let shuffled = alphabet.shuffled()
         
         for i in 0..<alphabet.count {
-            mapping[alphabet[i]]=shuffled[i]
+            mapping[alphabet[i]] = shuffled[i]
         }
-        //Create reverse mapping for verification
+        // Create reverse mapping for verification
         correctMappings = Dictionary(uniqueKeysWithValues: mapping.map { ($1, $0) })
         
-        //Encrypt the solution
+        // Encrypt the solution
         encrypted = solution.map { char in
-            if char.isLetter{
+            if char.isLetter {
                 return String(mapping[char] ?? char)
             }
             return String(char)
         }.joined()
         
-        //Initialize display with blocks
-        currentDisplay = solution.map {char in
-            if char.isLetter{
+        // Initialize display with blocks
+        currentDisplay = solution.map { char in
+            if char.isLetter {
                 return "█"
             }
             return String(char)
@@ -120,7 +146,7 @@ struct Game {
             letterFrequency[char, default: 0] += 1
         }
         
-        //Reset other game state
+        // Reset other game state
         self.mapping = mapping
         self.guessedMappings = [:]
         self.selectedLetter = nil
@@ -129,7 +155,6 @@ struct Game {
         self.hasLost = false
         self.startTime = Date()
         self.lastUpdateTime = Date()
-        
     }
     
     // Select letter for guessing
@@ -139,33 +164,36 @@ struct Game {
             selectedLetter = nil
             return
         }
+        
+        // Otherwise, set the selected letter
+        selectedLetter = letter
     }
     
     mutating func makeGuess(_ guessedLetter: Character) -> Bool {
-        guard let selectedLetter = selectedLetter else {
+        guard let selected = selectedLetter else {
             return false
         }
         
-        //Check if guess is correct
+        // Check if guess is correct
         let isCorrect = correctMappings[selected] == guessedLetter
-         if isCorrect {
-            //Store the mapping
-             guessedMappings[selected] = guessedLetter
-             
-             //Update display
-             updateDisplay()
-             
-             //Check if we've won
-             checkWinCondition()
-         } else {
-             //Increment mistakes
-             mistakes += 1
-             
-             // Check if we've lost
-             if mistakes >= maxMistakes {
-                 hasLost = true
-             }
-         }
+        if isCorrect {
+            // Store the mapping
+            guessedMappings[selected] = guessedLetter
+            
+            // Update display
+            updateDisplay()
+            
+            // Check if we've won
+            checkWinCondition()
+        } else {
+            // Increment mistakes
+            mistakes += 1
+            
+            // Check if we've lost
+            if mistakes >= maxMistakes {
+                hasLost = true
+            }
+        }
         
         // Clear selection after guess
         selectedLetter = nil
@@ -173,29 +201,29 @@ struct Game {
         // Update last update time
         lastUpdateTime = Date()
         
-        // Save the game state to teh database
+        // Save the game state to the database
         saveGameState()
         
         return isCorrect
     }
     
-    //Update display text based on guessed mappings
+    // Update display text based on guessed mappings
     mutating func updateDisplay() {
         var displayChars = Array(currentDisplay)
         
         for i in 0..<encrypted.count {
             let encryptedChar = Array(encrypted)[i]
             
-            if let guessedChar = guessedMappings[encryptedChar]{
+            if let guessedChar = guessedMappings[encryptedChar] {
                 displayChars[i] = guessedChar
             }
         }
         currentDisplay = String(displayChars)
     }
     
-    //Check if all letters have been correctly guessed
+    // Check if all letters have been correctly guessed
     mutating func checkWinCondition() {
-        let uniqueEncryptedLetters = Set(encrypted.filter { $0.isLetter})
+        let uniqueEncryptedLetters = Set(encrypted.filter { $0.isLetter })
         let guessedLetters = Set(guessedMappings.keys)
         
         hasWon = uniqueEncryptedLetters == guessedLetters
@@ -205,7 +233,7 @@ struct Game {
     func correctlyGuessed() -> [Character] {
         return Array(guessedMappings.keys)
     }
-
+    
     // Get the set of unique encrypted letters
     func uniqueEncryptedLetters() -> [Character] {
         return Array(Set(encrypted.filter { $0.isLetter })).sorted()
@@ -213,25 +241,25 @@ struct Game {
     
     // Get a hint by revealing a random letter
     mutating func getHint() -> Bool {
-        //Get all unguessed encrypted letters
-        let unguessedLetters = Set(encrypted.filter { $0.isLetter && !correctlyGuessed().contains($0)})
+        // Get all unguessed encrypted letters
+        let unguessedLetters = Set(encrypted.filter { $0.isLetter && !correctlyGuessed().contains($0) })
         // If all letters are guessed, we can't provide a hint
         if unguessedLetters.isEmpty {
             return false
         }
-        //Pick a random unguessed letter
+        // Pick a random unguessed letter
         if let hintLetter = unguessedLetters.randomElement() {
             // Get the corresponding original letter
             let originalLetter = correctMappings[hintLetter] ?? "?"
-             // Update the mapping
+            // Update the mapping
             guessedMappings[hintLetter] = originalLetter
             // Update Display
             updateDisplay()
-            //Increment mistakes
+            // Increment mistakes
             mistakes += 1
-            //Check for win condition
+            // Check for win condition
             checkWinCondition()
-            //Check for loss
+            // Check for loss
             if mistakes >= maxMistakes {
                 hasLost = true
             }
@@ -239,16 +267,15 @@ struct Game {
             saveGameState()
             
             return true
-            
         }
         return false
     }
     
     // Calculate score based on difficulty, mistakes and time
-    func CalculateScore() -> Int {
+    func calculateScore() -> Int {
         let timeInSeconds = Int(lastUpdateTime.timeIntervalSince(startTime))
         
-        // Base score dependson difficulty
+        // Base score depends on difficulty
         let baseScore: Int
         switch difficulty.lowercased() {
         case "easy":
@@ -272,6 +299,9 @@ struct Game {
             timeScore = 0
         }
         
+        // Calculate mistake penalty
+        let mistakePenalty = mistakes * 20
+        
         // Calculate total score
         let totalScore = baseScore - mistakePenalty + timeScore
         
@@ -283,14 +313,14 @@ struct Game {
     private func saveGameState() {
         do {
             if let gameId = self.gameId {
-                //Update existing game
-                try DatabaseManager.shared.updateGame(se;f, gameID: gameId)
+                // Update existing game
+                try DatabaseManager.shared.updateGame(self, gameId: gameId)
             } else {
                 // Save new game
                 try DatabaseManager.shared.saveGame(self)
             }
         } catch {
-            print("error saving game state: \(error)")
+            print("Error saving game state: \(error)")
         }
     }
     
@@ -299,24 +329,8 @@ struct Game {
         do {
             return try DatabaseManager.shared.loadLatestGame()
         } catch {
-            print("error loading saved game: \(error)")
+            print("Error loading saved game: \(error)")
             return nil
         }
     }
 }
-
-    
-    
-
-
-
-
-
-
-//
-//  Game.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-

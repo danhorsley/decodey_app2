@@ -8,6 +8,10 @@ struct GameGridsView: View {
     let showTextHelpers: Bool
     
     @State private var isHintInProgress = false
+    @EnvironmentObject private var settings: UserSettings
+    
+    // Use DesignSystem for consistent sizing
+    private let design = DesignSystem.shared
     
     // Use environment instead of custom styles
     @Environment(\.colorScheme) var colorScheme
@@ -15,7 +19,7 @@ struct GameGridsView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            // Detect orientation using GeometryReader
+            // Detect orientation using GeometryReader instead of UIKit
             let isLandscape = geometry.size.width > geometry.size.height
             
             if isLandscape || horizontalSizeClass == .regular {
@@ -55,21 +59,28 @@ struct GameGridsView: View {
                     .foregroundColor(.secondary)
             }
             
-            // Create grid
-            LazyVGrid(columns: createGridColumns(), spacing: 8) {
-                ForEach(game.uniqueEncryptedLetters(), id: \.self) { letter in
-                    EncryptedLetterCell(
-                        letter: letter,
-                        isSelected: game.selectedLetter == letter,
-                        isGuessed: game.correctlyGuessed().contains(letter),
-                        frequency: game.letterFrequency[letter] ?? 0,
-                        action: {
-                            withAnimation {
-                                game.selectLetter(letter)
+            // Create grid with columns based on geometry
+            GeometryReader { gridGeometry in
+                // Create grid with number of columns based on size
+                let isLandscape = gridGeometry.size.width > gridGeometry.size.height
+                
+                LazyVGrid(columns: createGridColumns(isLandscape: isLandscape), spacing: design.letterCellSpacing) {
+                    ForEach(game.uniqueEncryptedLetters(), id: \.self) { letter in
+                        EncryptedLetterCell(
+                            letter: letter,
+                            isSelected: game.selectedLetter == letter,
+                            isGuessed: game.correctlyGuessed().contains(letter),
+                            frequency: game.letterFrequency[letter] ?? 0,
+                            action: {
+                                withAnimation {
+                                    game.selectLetter(letter)
+                                }
                             }
-                        }
-                    )
+                        )
+                        .frame(width: design.letterCellSize, height: design.letterCellSize)
+                    }
                 }
+                .frame(width: gridGeometry.size.width)
             }
         }
     }
@@ -86,40 +97,45 @@ struct GameGridsView: View {
             // Get unique letters from the solution
             let uniqueLetters = Array(Set(game.solution.filter { $0.isLetter })).sorted()
             
-            // Create grid
-            LazyVGrid(columns: createGridColumns(), spacing: 8) {
-                ForEach(uniqueLetters, id: \.self) { letter in
-                    GuessLetterCell(
-                        letter: letter,
-                        isUsed: game.guessedMappings.values.contains(letter),
-                        action: {
-                            if game.selectedLetter != nil {
-                                withAnimation {
-                                    let _ = game.makeGuess(letter)
-                                    
-                                    // Check game status
-                                    if game.hasWon {
-                                        showWinMessage = true
-                                    } else if game.hasLost {
-                                        showLoseMessage = true
+            // Create grid with adaptive columns
+            GeometryReader { gridGeometry in
+                let isLandscape = gridGeometry.size.width > gridGeometry.size.height
+                
+                LazyVGrid(columns: createGridColumns(isLandscape: isLandscape), spacing: design.letterCellSpacing) {
+                    ForEach(uniqueLetters, id: \.self) { letter in
+                        GuessLetterCell(
+                            letter: letter,
+                            isUsed: game.guessedMappings.values.contains(letter),
+                            action: {
+                                if let selectedLetter = game.selectedLetter {
+                                    withAnimation {
+                                        let _ = game.makeGuess(letter)
+                                        
+                                        // Check game status
+                                        if game.hasWon {
+                                            showWinMessage = true
+                                        } else if game.hasLost {
+                                            showLoseMessage = true
+                                        }
                                     }
                                 }
                             }
-                        }
-                    )
+                        )
+                        .frame(width: design.letterCellSize, height: design.letterCellSize)
+                    }
                 }
+                .frame(width: gridGeometry.size.width)
             }
         }
     }
     
     // Helper to create adaptive grid columns
-    private func createGridColumns() -> [GridItem] {
-        #if os(iOS) || os(tvOS)
-        let columnCount = horizontalSizeClass == .regular ? 8 : 5
-        #else
-        let columnCount = 5  // For macOS, always use wider grid
-        #endif
-        return Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount)
+    private func createGridColumns(isLandscape: Bool) -> [GridItem] {
+        let columnCount = isLandscape ?
+            design.gridColumnsLandscape :
+            design.gridColumnsPortrait
+            
+        return Array(repeating: GridItem(.flexible(), spacing: design.letterCellSpacing), count: columnCount)
     }
     
     // Hint button
@@ -151,12 +167,6 @@ struct GameGridsView: View {
                 }
             }
         )
+        .frame(width: design.hintButtonWidth, height: design.hintButtonHeight)
     }
 }
-//
-//  GameGridsView.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-

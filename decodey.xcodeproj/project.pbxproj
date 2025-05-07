@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		280A4D7D2DCBB33E003DAD3B /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 280A4D7C2DCBB33E003DAD3B /* GRDB */; };
 		280A4D9B2DCBB782003DAD3B /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 280A4D9A2DCBB77A003DAD3B /* .gitignore */; };
+		28F6CCFC2DCBBCF400CA05CE /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28F6CCFB2DCBBCF400CA05CE /* UIKit.framework */; platformFilters = (ios, xros, ); };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,6 +34,7 @@
 		280A4D572DCB9708003DAD3B /* decodeyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = decodeyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		280A4D612DCB9708003DAD3B /* decodeyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = decodeyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		280A4D9A2DCBB77A003DAD3B /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		28F6CCFB2DCBBCF400CA05CE /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.4.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -59,6 +61,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				280A4D7D2DCBB33E003DAD3B /* GRDB in Frameworks */,
+				28F6CCFC2DCBBCF400CA05CE /* UIKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,6 +107,7 @@
 		280A4D7B2DCBB33E003DAD3B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				28F6CCFB2DCBBCF400CA05CE /* UIKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

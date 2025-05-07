@@ -10,28 +10,33 @@ struct EncryptedLetterCell: View {
     // Use environment values
     @Environment(\.colorScheme) var colorScheme
     
+    // Use color system
+    private let colors = ColorSystem.shared
+    
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .bottomTrailing) {
-                // Background and content
+                // Container
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(backgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? colors.accent : Color.clear, lineWidth: 2)
+                    )
+                    .frame(minWidth: 40, minHeight: 40)
+                
+                // Letter
                 Text(String(letter))
                     .font(.system(.title3, design: .monospaced))
                     .fontWeight(.bold)
-                    .frame(minWidth: 40, minHeight: 40)
-                    .background(backgroundForState())
-                    .foregroundColor(foregroundForState())
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                    )
+                    .foregroundColor(textColor)
                 
                 // Frequency counter in bottom right
                 if frequency > 0 && !isGuessed {
                     Text("\(frequency)")
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(getFrequencyColor())
+                        .foregroundColor(textColor.opacity(0.7))
                         .offset(x: -4, y: -4)
                 }
             }
@@ -42,10 +47,32 @@ struct EncryptedLetterCell: View {
         .disabled(isGuessed)
     }
     
-    // Helper function for frequency color
-    private func getFrequencyColor() -> Color {
-        let baseColor = foregroundForState()
-        return baseColor.opacity(0.7)
+    // Background color based on state and color scheme
+    private var backgroundColor: Color {
+        if isSelected {
+            // Selected state - use the selected background color
+            return colors.selectedBackground(for: colorScheme, isEncrypted: true)
+        } else if isGuessed {
+            // Guessed state
+            return colors.guessedBackground(for: colorScheme)
+        } else {
+            // Normal state - match body background
+            return colors.primaryBackground(for: colorScheme)
+        }
+    }
+    
+    // Text color based on state and color scheme
+    private var textColor: Color {
+        if isSelected {
+            // Selected state - invert colors
+            return colors.selectedText(for: colorScheme)
+        } else if isGuessed {
+            // Guessed state
+            return colors.guessedText(for: colorScheme)
+        } else {
+            // Normal state - use specified colors
+            return colors.encryptedText(for: colorScheme)
+        }
     }
     
     // Helper function for accessibility hint
@@ -58,28 +85,6 @@ struct EncryptedLetterCell: View {
             return "Tap to select"
         }
     }
-    
-    // Background color based on state using system colors
-    private func backgroundForState() -> Color {
-        if isGuessed {
-            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
-        } else if isSelected {
-            return Color.accentColor
-        } else {
-            return colorScheme == .dark ? Color.blue.opacity(0.7) : Color.blue.opacity(0.8)
-        }
-    }
-    
-    // Foreground (text) color based on state
-    private func foregroundForState() -> Color {
-        if isGuessed {
-            return Color.gray
-        } else if isSelected {
-            return colorScheme == .dark ? Color.black : Color.white
-        } else {
-            return .white
-        }
-    }
 }
 
 struct GuessLetterCell: View {
@@ -90,19 +95,24 @@ struct GuessLetterCell: View {
     // Use environment values
     @Environment(\.colorScheme) var colorScheme
     
+    // Use color system
+    private let colors = ColorSystem.shared
+    
     var body: some View {
         Button(action: action) {
-            Text(String(letter))
-                .font(.system(.title3, design: .monospaced))
-                .fontWeight(.bold)
-                .frame(minWidth: 36, minHeight: 36)
-                .background(getBackgroundColor())
-                .foregroundColor(getForegroundColor())
-                .cornerRadius(8)
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+                .overlay(
+                    Text(String(letter))
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.bold)
+                        .foregroundColor(textColor)
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
+                .frame(minWidth: 36, minHeight: 36)
                 .accessibilityLabel("Letter \(letter)")
                 .accessibilityHint(isUsed ? "Already used" : "Tap to guess")
         }
@@ -110,28 +120,21 @@ struct GuessLetterCell: View {
         .disabled(isUsed)
     }
     
-    // Helper function for background color
-    private func getBackgroundColor() -> Color {
+    // Background color
+    private var backgroundColor: Color {
         if isUsed {
-            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
+            return colors.guessedBackground(for: colorScheme)
         } else {
-            return colorScheme == .dark ? Color.gray.opacity(0.15) : Color.gray.opacity(0.1)
+            return colors.primaryBackground(for: colorScheme)
         }
     }
     
-    // Helper function for foreground color
-    private func getForegroundColor() -> Color {
+    // Text color
+    private var textColor: Color {
         if isUsed {
-            return Color.gray
+            return colors.guessedText(for: colorScheme)
         } else {
-            return colorScheme == .dark ? Color.white : Color.black
+            return colors.guessText(for: colorScheme)
         }
     }
 }
-//
-//  LetterCells.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-
