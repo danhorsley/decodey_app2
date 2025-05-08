@@ -1,72 +1,170 @@
 import SwiftUI
 
-// MARK: - Holographic Text Reveal Effect - Fixed Cross-Platform Version
+// Safe HolographicRevealEffect that won't crash
 struct HolographicRevealEffect: View {
     let text: String
     let active: Bool
     
-    // Configuration
-    private let scanLineCount = 3
-    private let scanLineHeight: CGFloat = 1.5
-    private let noiseIntensity: CGFloat = 0.04
-    private let glitchFrequency = 0.15
-    
-    // Animation states
-    @State private var revealProgress: CGFloat = 0.0
-    @State private var scanLinePositions: [CGFloat] = []
-    @State private var glitchOffset: CGFloat = 0.0
-    @State private var characterGlitches: [Bool] = []
-    @State private var timer: Timer? = nil
-    @State private var charOpacities: [Double] = []
-    @State private var charOffsets: [CGSize] = []
-    @State private var displayText = ""
-    
-    // For shimmer effect
-    @State private var shimmerProgress: CGFloat = 0.0
+    // State variables
+    @State private var revealProgress: Double = 0.0
+    @State private var shimmerPosition: Double = 0.0
+    @State private var displayText: String = ""
+    @State private var glitchActive: Bool = false
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Dark background with grid pattern
-                gridBackground
-                    .opacity(active ? 0.3 : 0)
-                
-                // Character-by-character text with effects
-                Text(displayText)
-                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .modifier(HolographicModifier(progress: shimmerProgress))
-                
-                // Scan lines
-                ForEach(0..<scanLinePositions.count, id: \.self) { index in
-                    scanLine(width: geometry.size.width, at: scanLinePositions[index])
-                }
-                
-                // Noise overlay
-                Color.white
-                    .opacity(active ? noiseIntensity : 0)
+        ZStack {
+            // Background grid
+            GridBackgroundView()
+                .opacity(0.3)
+            
+            // Text display
+            Text(displayText)
+                .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white)
+                // Add shimmer effect
+                .overlay(
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .clear, location: shimmerPosition - 0.2),
+                            .init(color: .white.opacity(0.5), location: shimmerPosition),
+                            .init(color: .clear, location: shimmerPosition + 0.2)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                     .blendMode(.overlay)
-                    .allowsHitTesting(false)
+                )
+                // Apply glitch effect randomly
+                .offset(x: glitchActive ? CGFloat.random(in: -3...3) : 0)
+        }
+        .onAppear {
+            setupEffect()
+        }
+        .onChange(of: active) { isActive in
+            if isActive {
+                setupEffect()
+            } else {
+                // Reset the effect
+                displayText = ""
+                revealProgress = 0.0
             }
-            .onAppear {
-                if active {
-                    startHolographicEffect()
+        }
+    }
+    
+    // Setup the effect
+    private func setupEffect() {
+        // Initialize with spaces
+        displayText = String(repeating: " ", count: text.count)
+        
+        // Start shimmer animation
+        withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+            shimmerPosition = 1.0
+        }
+        
+        // Start character reveal animation
+        startRevealSequence()
+    }
+    
+    // Safe character array modification
+    private func safeReplaceCharacter(at index: Int, with character: Character) {
+        guard index >= 0 && index < displayText.count else { return }
+        
+        var characters = Array(displayText)
+        characters[index] = character
+        displayText = String(characters)
+    }
+    
+    // Start the reveal sequence
+    private func startRevealSequence() {
+        // Start with empty display
+        let textArray = Array(text)
+        let totalChars = textArray.count
+        
+        // Schedule gradual reveal
+        let totalRevealTime = 3.0 // seconds
+        let charRevealInterval = totalRevealTime / Double(totalChars)
+        
+        // Random glitch effect
+        let glitchTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
+            // Random chance of glitch
+            if Bool.random() && revealProgress < 1.0 {
+                glitchActive = true
+                
+                // Reset after short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    glitchActive = false
+                }
+                
+                // Add random character glitches if not fully revealed
+                if revealProgress < 0.9 {
+                    // Choose a random position to glitch
+                    let randomIndex = Int.random(in: 0..<totalChars)
+                    let randomChar = randomGlitchChar()
+                    
+                    // Only glitch if character not yet revealed
+                    let revealedIndex = Int(Double(totalChars) * revealProgress)
+                    if randomIndex > revealedIndex {
+                        safeReplaceCharacter(at: randomIndex, with: randomChar)
+                        
+                        // Reset to space after a short delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            safeReplaceCharacter(at: randomIndex, with: " ")
+                        }
+                    }
                 }
             }
-            // Use the new onChange syntax compatible with both iOS 17+ and macOS 14+
-            .onChange(of: active) { _, newValue in
-                if newValue {
-                    startHolographicEffect()
+        }
+        
+        // Reveal each character sequentially with a slight delay
+        for (index, char) in textArray.enumerated() {
+            // Calculate delay for this character
+            let delay = charRevealInterval * Double(index)
+            
+            // Schedule reveal
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                // Only proceed if index is still valid
+                guard index < totalChars else { return }
+                
+                // Update progress
+                revealProgress = Double(index) / Double(totalChars)
+                
+                // Reveal the character with small random chance to delay
+                if Bool.random() {
+                    safeReplaceCharacter(at: index, with: char)
                 } else {
-                    resetEffect()
+                    // Slight additional delay for some characters
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        safeReplaceCharacter(at: index, with: char)
+                    }
+                }
+                
+                // If we're at the last character, schedule cleanup
+                if index == totalChars - 1 {
+                    // Final progress
+                    revealProgress = 1.0
+                    
+                    // Ensure the final text is correct
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        displayText = text
+                        
+                        // Stop the glitch timer
+                        glitchTimer.invalidate()
+                    }
                 }
             }
         }
     }
     
-    // Grid pattern background
-    private var gridBackground: some View {
+    // Generate a random character for glitch effect
+    private func randomGlitchChar() -> Character {
+        let glitchChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-=_+[]{}|;:'\",.<>/?\\`~"
+        return glitchChars.randomElement() ?? "X"
+    }
+}
+
+// Grid background
+struct GridBackgroundView: View {
+    var body: some View {
         Canvas { context, size in
             // Draw horizontal grid lines
             for y in stride(from: 0, to: size.height, by: 10) {
@@ -85,199 +183,17 @@ struct HolographicRevealEffect: View {
             }
         }
     }
-    
-    // Scan line view
-    private func scanLine(width: CGFloat, at yPosition: CGFloat) -> some View {
-        Rectangle()
-            .fill(
-                LinearGradient(
-                    gradient: Gradient(colors: [.clear, .cyan.opacity(0.7), .clear]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(width: width, height: scanLineHeight)
-            .offset(y: yPosition)
-            .opacity(active ? 0.7 : 0)
-            .blendMode(.screen)
-    }
-    
-    // Start the holographic effect
-    private func startHolographicEffect() {
-        // Reset
-        resetEffect()
-        
-        // Initialize arrays for each character
-        let characters = Array(text)
-        charOpacities = Array(repeating: 0.0, count: characters.count)
-        charOffsets = Array(repeating: .zero, count: characters.count)
-        characterGlitches = Array(repeating: false, count: characters.count)
-        displayText = String(repeating: " ", count: characters.count)
-        
-        // Initialize scan lines
-        scanLinePositions = []
-        for _ in 0..<scanLineCount {
-            scanLinePositions.append(CGFloat.random(in: -50...50))
-        }
-        
-        // Start shimmer animation
-        withAnimation(.linear(duration: 3.0).repeatForever(autoreverses: false)) {
-            shimmerProgress = 1.0
-        }
-        
-        // Timer for animation updates
-        timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-            // Update scan line positions
-            for i in 0..<scanLinePositions.count {
-                scanLinePositions[i] = (scanLinePositions[i] + 2).truncatingRemainder(dividingBy: 100) - 50
-            }
-            
-            // Gradually reveal characters
-            if revealProgress < 1.0 {
-                revealProgress += 0.01
-                
-                // Update character states based on reveal progress
-                for i in 0..<characters.count {
-                    let shouldReveal = Double(i) / Double(characters.count) <= Double(revealProgress)
-                    
-                    if shouldReveal && charOpacities[i] < 1.0 {
-                        // Randomly decide to reveal this character
-                        if Bool.random() {
-                            charOpacities[i] = 1.0
-                            
-                            // Replace placeholder with actual character
-                            var displayChars = Array(displayText)
-                            displayChars[i] = characters[i]
-                            displayText = String(displayChars)
-                        }
-                    }
-                    
-                    // Randomly apply glitch effect to unrevealed characters
-                    if !shouldReveal && Bool.random(withProbability: glitchFrequency) {
-                        characterGlitches[i] = true
-                        
-                        // Show random character for glitch effect
-                        var displayChars = Array(displayText)
-                        displayChars[i] = randomGlitchChar()
-                        displayText = String(displayChars)
-                        
-                        // Reset glitch after short delay
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            characterGlitches[i] = false
-                            
-                            // Restore space if not revealed yet
-                            if Double(i) / Double(characters.count) > Double(revealProgress) {
-                                var displayChars = Array(displayText)
-                                displayChars[i] = " "
-                                displayText = String(displayChars)
-                            }
-                        }
-                    }
-                }
-            } else if displayText != text {
-                // Ensure all characters are revealed at the end
-                displayText = text
-            }
-            
-            // Apply occasional global glitch
-            if Bool.random(withProbability: 0.05) {
-                glitchOffset = CGFloat.random(in: -5...5)
-                
-                // Reset glitch after short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    glitchOffset = 0
-                }
-            }
-            
-            // Stop timer when complete and stable
-            if revealProgress >= 1.0 && displayText == text && !characterGlitches.contains(true) && glitchOffset == 0 {
-                // Keep running for scan line and shimmer effects
-            }
-        }
-    }
-    
-    // Reset the effect
-    private func resetEffect() {
-        timer?.invalidate()
-        timer = nil
-        revealProgress = 0.0
-        glitchOffset = 0.0
-        scanLinePositions = []
-        characterGlitches = []
-        charOpacities = []
-        charOffsets = []
-        displayText = ""
-        shimmerProgress = 0.0
-    }
-    
-    // Generate a random character for glitch effect
-    private func randomGlitchChar() -> Character {
-        let glitchChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-=_+[]{}|;:'\",.<>/?\\`~"
-        return glitchChars.randomElement() ?? "X"
-    }
 }
 
-// Holographic modifier for shimmer effect
-struct HolographicModifier: ViewModifier {
-    let progress: CGFloat
-    
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                // Diagonal shimmer
-                GeometryReader { geometry in
-                    Color.white
-                        .opacity(0.5)
-                        .blendMode(.overlay)
-                        .mask(
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(stops: [
-                                            .init(color: .clear, location: progress - 0.2),
-                                            .init(color: .white.opacity(0.7), location: progress),
-                                            .init(color: .clear, location: progress + 0.2)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                }
-            )
-            .overlay(
-                // Horizontal scan line
-                GeometryReader { geometry in
-                    Color.cyan.opacity(0.4)
-                        .blendMode(.screen)
-                        .mask(
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(stops: [
-                                            .init(color: .clear, location: progress - 0.01),
-                                            .init(color: .white, location: progress),
-                                            .init(color: .clear, location: progress + 0.01)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                        )
-                }
-            )
-    }
-}
-
-// Extension to add probability-based random Bool
+// Bool random with probability
 extension Bool {
-    static func random(withProbability probability: Double) -> Bool {
+    static func random(withProbability probability: Double = 0.5) -> Bool {
         return Double.random(in: 0...1) < probability
     }
 }
 
-// MARK: - Win Overlay Using Holographic Effect
-struct HolographicWinOverlayView: View {
+// Safe Win Overlay with Matrix Background and Holographic Effect
+struct SafeWinOverlayView: View {
     let solution: String
     let mistakes: Int
     let maxMistakes: Int
@@ -291,20 +207,23 @@ struct HolographicWinOverlayView: View {
     @State private var showStats = false
     @State private var showButton = false
     
-    @Environment(\.colorScheme) var colorScheme
-    
     var body: some View {
         ZStack {
-            // Background blur and overlay
-            Color.black.opacity(0.85)
-                .ignoresSafeArea()
+            // Matrix effect background - First layer
+            SimpleMatrixEffect()
+                .edgesIgnoringSafeArea(.all)
             
+            // Semi-transparent overlay for better contrast
+            Color.black.opacity(0.7)
+                .edgesIgnoringSafeArea(.all)
+            
+            // Content
             VStack(spacing: 24) {
                 // Win message
                 Text("YOU WIN!")
                     .font(.system(size: 36, weight: .bold, design: .monospaced))
                     .foregroundColor(.green)
-                    .shadow(color: .green.opacity(0.7), radius: 5, x: 0, y: 0)
+                    .shadow(color: .green.opacity(0.7), radius: 5)
                 
                 // Solution with holographic reveal effect
                 HolographicRevealEffect(text: solution, active: showRevealEffect)
@@ -324,11 +243,11 @@ struct HolographicWinOverlayView: View {
                     Text("\(score)")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundColor(.green)
-                        .shadow(color: .green.opacity(0.7), radius: 3, x: 0, y: 0)
+                        .shadow(color: .green.opacity(0.7), radius: 3)
                 }
                 .padding()
                 .frame(width: 200)
-                .background(Color.black.opacity(0.5))
+                .background(Color.black.opacity(0.7))
                 .cornerRadius(12)
                 .opacity(showScore ? 1 : 0)
                 .scaleEffect(showScore ? 1 : 0.8)
@@ -360,18 +279,7 @@ struct HolographicWinOverlayView: View {
                 .offset(y: showStats ? 0 : 20)
                 
                 // Play again button
-                Button(action: {
-                    // Reset animations
-                    showRevealEffect = false
-                    showScore = false
-                    showStats = false
-                    showButton = false
-                    
-                    // Small delay before calling onPlayAgain
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        onPlayAgain()
-                    }
-                }) {
+                Button(action: onPlayAgain) {
                     Text("Play Again")
                         .font(.headline)
                         .padding(.horizontal, 24)
@@ -381,7 +289,7 @@ struct HolographicWinOverlayView: View {
                         .cornerRadius(12)
                         .shadow(color: .green.opacity(0.5), radius: 5, x: 0, y: 2)
                 }
-                .buttonStyle(BorderlessButtonStyle())
+                .buttonStyle(PlainButtonStyle())
                 .opacity(showButton ? 1 : 0)
                 .scaleEffect(showButton ? 1 : 0.8)
             }
@@ -390,9 +298,6 @@ struct HolographicWinOverlayView: View {
             .cornerRadius(20)
             .onAppear {
                 // Staggered animations for each element
-                // The reveal effect starts immediately
-                
-                // Show score after the reveal effect has started
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation(.spring()) {
                         showScore = true
@@ -425,30 +330,71 @@ struct HolographicWinOverlayView: View {
     }
 }
 
-// MARK: - Preview Provider
-#if DEBUG
-struct HolographicRevealEffect_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            // Holographic Effect Preview
-            HolographicRevealEffect(text: "HOLOGRAPHIC", active: true)
-                .frame(height: 100)
-                .background(Color.black)
-                .previewLayout(.sizeThatFits)
-                .previewDisplayName("Holographic Effect")
-            
-            // Win Overlay Preview
-            HolographicWinOverlayView(
-                solution: "THE QUICK BROWN FOX",
-                mistakes: 2,
-                maxMistakes: 5,
-                timeTaken: 120,
-                score: 350,
-                isDarkMode: true,
-                onPlayAgain: {}
-            )
-            .previewDisplayName("Holographic Win Overlay")
+// Simplified Matrix Effect for better performance
+struct SimpleMatrixEffect: View {
+    @State private var characters = Array(repeating: Array(repeating: " ", count: 15), count: 15)
+    @State private var timer: Timer?
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black
+                    .edgesIgnoringSafeArea(.all)
+                
+                VStack(spacing: 2) {
+                    ForEach(0..<characters.count, id: \.self) { row in
+                        HStack(spacing: 4) {
+                            ForEach(0..<characters[row].count, id: \.self) { col in
+                                Text(characters[row][col])
+                                    .font(.system(size: 16, weight: .medium, design: .monospaced))
+                                    .foregroundColor(matrixColor(row: row))
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            startAnimation()
+        }
+        .onDisappear {
+            timer?.invalidate()
         }
     }
+    
+    private func matrixColor(row: Int) -> Color {
+        let intensity = 1.0 - (Double(row) / Double(characters.count)) * 0.6
+        return Color.green.opacity(intensity)
+    }
+    
+    private func startAnimation() {
+        // Initialize with random characters
+        updateRandomCharacters()
+        
+        // Create timer to update characters
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            updateRandomCharacters()
+        }
+    }
+    
+    private func updateRandomCharacters() {
+        // Make a copy of current state
+        var newChars = characters
+        
+        // Update a few random characters
+        for _ in 0..<10 {
+            let row = Int.random(in: 0..<characters.count)
+            let col = Int.random(in: 0..<characters[0].count)
+            newChars[row][col] = randomMatrixChar()
+        }
+        
+        // Update state with new characters
+        characters = newChars
+    }
+    
+    private func randomMatrixChar() -> String {
+        let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-*/=!?><$"
+        return String(charset.randomElement() ?? "X")
+    }
 }
-#endif
