@@ -185,6 +185,9 @@ struct Game {
             
             // Check if we've won
             checkWinCondition()
+            
+            // We don't need to play sound here as the calling view will handle it
+            // after seeing the return value
         } else {
             // Increment mistakes
             mistakes += 1
@@ -192,6 +195,9 @@ struct Game {
             // Check if we've lost
             if mistakes >= maxMistakes {
                 hasLost = true
+                
+                // We don't need to play lose sound here as it's better handled in the view
+                // to avoid delaying the model update
             }
         }
         
@@ -226,6 +232,7 @@ struct Game {
         let uniqueEncryptedLetters = Set(encrypted.filter { $0.isLetter })
         let guessedLetters = Set(guessedMappings.keys)
         
+        let previousState = hasWon
         hasWon = uniqueEncryptedLetters == guessedLetters
     }
     
@@ -262,6 +269,8 @@ struct Game {
             // Check for loss
             if mistakes >= maxMistakes {
                 hasLost = true
+                
+                // Sound will be handled by the view after this method returns
             }
             // Save the game state
             saveGameState()
@@ -332,5 +341,13 @@ struct Game {
             print("Error loading saved game: \(error)")
             return nil
         }
+    }
+    
+    mutating func resetGameWithSound() {
+        // First stop any playing sounds using SoundManager
+        SoundManager.shared.stopAllSounds()
+        
+        // Then reset the game
+        setupNewGame()
     }
 }
