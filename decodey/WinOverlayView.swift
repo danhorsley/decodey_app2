@@ -10,6 +10,7 @@ struct WinOverlayView: View {
     let isDarkMode: Bool
     let onPlayAgain: () -> Void
     
+    @State private var showGlitchEffect = true
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -18,13 +19,16 @@ struct WinOverlayView: View {
                 .font(.largeTitle.bold())
                 .foregroundColor(.green)
             
-            Text(solution)
-                .font(.headline)
-                .foregroundColor(.white)
+            // Use GlitchRevealEffect for the solution
+            GlitchRevealEffect(text: solution, active: showGlitchEffect)
                 .padding()
                 .background(Color.black.opacity(0.8))
                 .cornerRadius(8)
                 .padding(.horizontal)
+                .onAppear {
+                    // Ensure the effect starts when view appears
+                    showGlitchEffect = true
+                }
             
             // Score display
             VStack(spacing: 8) {

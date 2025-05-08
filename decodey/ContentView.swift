@@ -93,25 +93,20 @@ struct ContentView: View {
         }
     }
     
-    // Win message overlay
+
     private var winMessageOverlay: some View {
-        ZStack {
-            colors.overlayBackground()
-                .ignoresSafeArea()
-            
-            WinOverlayView(
-                solution: game.solution,
-                mistakes: game.mistakes,
-                maxMistakes: game.maxMistakes,
-                timeTaken: Int(game.lastUpdateTime.timeIntervalSince(game.startTime)),
-                score: game.calculateScore(),
-                isDarkMode: colorScheme == .dark,
-                onPlayAgain: resetGame
-            )
-            .frame(width: design.overlayWidth)
-            .cornerRadius(design.overlayCornerRadius)
-        }
+        MatrixWinOverlayView(
+            solution: game.solution,
+            mistakes: game.mistakes,
+            maxMistakes: game.maxMistakes,
+            timeTaken: Int(game.lastUpdateTime.timeIntervalSince(game.startTime)),
+            score: game.calculateScore(),
+            isDarkMode: colorScheme == .dark,
+            onPlayAgain: resetGame
+        )
     }
+
+
     
     // Lose message overlay
     private var loseMessageOverlay: some View {
