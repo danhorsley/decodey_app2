@@ -23,12 +23,15 @@ struct EncryptedLetterCell: View {
                     .fill(backgroundColor)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? colors.accent : Color.clear, lineWidth: 2)
+                            .stroke(
+                                isSelected ? colors.accent : colors.cellBorder(for: colorScheme),
+                                lineWidth: isSelected ? 2 : 1
+                            )
                     )
                 
                 // Letter - centered in the cell
                 Text(String(letter))
-                    .font(fonts.encryptedLetterCellForSize(design.currentScreenSize))  // Updated to use responsive font
+                    .font(fonts.encryptedLetterCellForSize(design.currentScreenSize))
                     .foregroundColor(textColor)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
@@ -46,7 +49,7 @@ struct EncryptedLetterCell: View {
                     }
                 }
             }
-            .frame(width: design.letterCellSize, height: design.letterCellSize)  // Use design system size
+            .frame(width: design.letterCellSize, height: design.letterCellSize)
             .accessibilityLabel("Letter \(letter), frequency \(frequency)")
             .accessibilityHint(getAccessibilityHint())
         }
@@ -72,7 +75,7 @@ struct EncryptedLetterCell: View {
         } else if isGuessed {
             return colors.guessedText(for: colorScheme)
         } else {
-            return colors.encryptedText(for: colorScheme)
+            return colors.encryptedColor(for: colorScheme) // Use the shared encrypted color
         }
     }
     
@@ -109,16 +112,16 @@ struct GuessLetterCell: View {
                     .fill(backgroundColor)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            .stroke(colors.cellBorder(for: colorScheme), lineWidth: 1)
                     )
                 
                 // Letter - centered in the cell
                 Text(String(letter))
-                    .font(fonts.guessLetterCellForSize(design.currentScreenSize))  // Updated to use responsive font
+                    .font(fonts.guessLetterCellForSize(design.currentScreenSize))
                     .foregroundColor(textColor)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(width: design.letterCellSize, height: design.letterCellSize)  // Use design system size
+            .frame(width: design.letterCellSize, height: design.letterCellSize)
             .accessibilityLabel("Letter \(letter)")
             .accessibilityHint(isUsed ? "Already used" : "Tap to guess")
         }
@@ -140,7 +143,7 @@ struct GuessLetterCell: View {
         if isUsed {
             return colors.guessedText(for: colorScheme)
         } else {
-            return colors.guessText(for: colorScheme)
+            return colors.guessColor(for: colorScheme) // Use the shared guess color
         }
     }
 }

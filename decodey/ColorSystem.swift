@@ -47,22 +47,27 @@ struct ColorSystem {
     
     // MARK: - Game-Specific Colors
     
-    // Encrypted Grid
-    func encryptedText(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color(hex: "4cc9f0") : Color.black
+    // Border for letter cells
+    func cellBorder(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3)
     }
     
-    // Guess Grid
-    func guessText(for colorScheme: ColorScheme) -> Color {
+    // Encrypted Text & Grid - now combined
+    func encryptedColor(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color(hex: "4cc9f0") : Color(hex: "0076FF")
+    }
+    
+    // Guess Text & Grid - now combined
+    func guessColor(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? Color(hex: "00ed99") : Color(hex: "0042aa")
     }
     
     // Selected state
     func selectedBackground(for colorScheme: ColorScheme, isEncrypted: Bool) -> Color {
         if isEncrypted {
-            return colorScheme == .dark ? Color(hex: "4cc9f0") : Color.black
+            return encryptedColor(for: colorScheme)
         } else {
-            return colorScheme == .dark ? Color(hex: "00ed99") : Color(hex: "0042aa")
+            return guessColor(for: colorScheme)
         }
     }
     
@@ -134,10 +139,3 @@ extension Color {
         )
     }
 }
-//
-//  ColorSystem.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
-

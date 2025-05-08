@@ -6,7 +6,7 @@ struct ContentView: View {
     @State private var showWinMessage = false
     @State private var showLoseMessage = false
     
-    // Use DesignSystem for consistent sizing
+    // Use DesignSystem for consistent sizing and colors
     private let design = DesignSystem.shared
     private let colors = ColorSystem.shared
     
@@ -14,7 +14,7 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            // Background color that matches the letter cells in light mode
+            // Background color
             colors.primaryBackground(for: colorScheme)
                 .ignoresSafeArea()
             
@@ -67,7 +67,7 @@ struct ContentView: View {
                 
                 Text(game.encrypted)
                     .font(.system(size: design.displayFontSize, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.encryptedColor(for: colorScheme)) // Use same color as encrypted grid
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
                     .background(Color.secondary.opacity(0.1))
@@ -79,12 +79,12 @@ struct ContentView: View {
                 if settings.showTextHelpers {
                     Text("Your solution:")
                         .font(.caption)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.secondary)
                 }
                 
                 Text(game.currentDisplay)
                     .font(.system(size: design.displayFontSize, design: .monospaced))
-                    .foregroundColor(.primary)
+                    .foregroundColor(colors.guessColor(for: colorScheme)) // Use same color as guess grid
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
                     .background(Color.secondary.opacity(0.1))
@@ -96,7 +96,7 @@ struct ContentView: View {
     // Win message overlay
     private var winMessageOverlay: some View {
         ZStack {
-            Color.black.opacity(0.75)
+            colors.overlayBackground()
                 .ignoresSafeArea()
             
             WinOverlayView(
@@ -105,7 +105,7 @@ struct ContentView: View {
                 maxMistakes: game.maxMistakes,
                 timeTaken: Int(game.lastUpdateTime.timeIntervalSince(game.startTime)),
                 score: game.calculateScore(),
-                isDarkMode: settings.isDarkMode,
+                isDarkMode: colorScheme == .dark,
                 onPlayAgain: resetGame
             )
             .frame(width: design.overlayWidth)
@@ -116,7 +116,7 @@ struct ContentView: View {
     // Lose message overlay
     private var loseMessageOverlay: some View {
         ZStack {
-            Color.black.opacity(0.75)
+            colors.overlayBackground()
                 .ignoresSafeArea()
             
             LoseOverlayView(
@@ -124,7 +124,7 @@ struct ContentView: View {
                 mistakes: game.mistakes,
                 maxMistakes: game.maxMistakes,
                 timeTaken: Int(game.lastUpdateTime.timeIntervalSince(game.startTime)),
-                isDarkMode: settings.isDarkMode,
+                isDarkMode: colorScheme == .dark,
                 onTryAgain: resetGame
             )
             .frame(width: design.overlayWidth)
