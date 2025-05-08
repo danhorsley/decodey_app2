@@ -1,19 +1,21 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var settings = UserSettings()
+    @EnvironmentObject private var settings: UserSettings
     @State private var game = Game()
     @State private var showWinMessage = false
     @State private var showLoseMessage = false
     
     // Use DesignSystem for consistent sizing
     private let design = DesignSystem.shared
+    private let colors = ColorSystem.shared
+    
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         ZStack {
-            // Basic background that adapts to light/dark mode
-            Color(white: 0.95)
-                .colorInvert()
+            // Background color that matches the letter cells in light mode
+            colors.primaryBackground(for: colorScheme)
                 .ignoresSafeArea()
             
             VStack(spacing: design.displayAreaPadding) {
@@ -48,10 +50,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Start a new game when the app appears
             resetGame()
         }
-        .environmentObject(settings) // Pass settings to child views
     }
     
     // Display area for the encrypted and solution text
@@ -59,9 +59,11 @@ struct ContentView: View {
         VStack(spacing: 16) {
             // Encrypted text
             VStack(alignment: .leading) {
-                Text("Encrypted:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if settings.showTextHelpers {
+                    Text("Encrypted:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
                 Text(game.encrypted)
                     .font(.system(size: design.displayFontSize, design: .monospaced))
@@ -74,9 +76,11 @@ struct ContentView: View {
             
             // Solution with blocks
             VStack(alignment: .leading) {
-                Text("Your solution:")
-                    .font(.caption)
-                    .foregroundColor(.primary)
+                if settings.showTextHelpers {
+                    Text("Your solution:")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                }
                 
                 Text(game.currentDisplay)
                     .font(.system(size: design.displayFontSize, design: .monospaced))

@@ -12,8 +12,8 @@ struct GameGridsView: View {
     
     // Use DesignSystem for consistent sizing
     private let design = DesignSystem.shared
+    private let colors = ColorSystem.shared
     
-    // Use environment instead of custom styles
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     
@@ -48,6 +48,7 @@ struct GameGridsView: View {
                 }
             }
         }
+        .background(colors.primaryBackground(for: colorScheme))
     }
     
     // Encrypted grid

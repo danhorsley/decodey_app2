@@ -1,10 +1,10 @@
 import SwiftUI
 
-// A simple settings model to store user preferences
 class UserSettings: ObservableObject {
     @Published var isDarkMode: Bool {
         didSet {
             UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
+            updateAppAppearance()
         }
     }
     
@@ -41,13 +41,19 @@ class UserSettings: ObservableObject {
             self.useAccessibilityTextSize = false // Default to standard text size
             UserDefaults.standard.set(false, forKey: "useAccessibilityTextSize")
         }
+        
+        // Apply initial appearance
+        updateAppAppearance()
+    }
+    
+    // Update app appearance based on dark mode setting
+    private func updateAppAppearance() {
+        #if os(iOS)
+        let scenes = UIApplication.shared.connectedScenes
+        let windowScene = scenes.first as? UIWindowScene
+        let window = windowScene?.windows.first
+        window?.overrideUserInterfaceStyle = isDarkMode ? .dark : .light
+        #endif
     }
 }
-
-//
-//  UserSettings.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 07/05/2025.
-//
 

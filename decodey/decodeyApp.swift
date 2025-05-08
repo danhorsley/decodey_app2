@@ -11,7 +11,7 @@ import SwiftUI
 struct decodeyApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainMenuView()
         }
     }
 }
