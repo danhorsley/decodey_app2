@@ -28,7 +28,7 @@ struct EncryptedLetterCell: View {
                 
                 // Letter - centered in the cell
                 Text(String(letter))
-                    .font(fonts.encryptedLetterCell())
+                    .font(fonts.encryptedLetterCellForSize(design.currentScreenSize))  // Updated to use responsive font
                     .foregroundColor(textColor)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
@@ -46,7 +46,7 @@ struct EncryptedLetterCell: View {
                     }
                 }
             }
-            .frame(minWidth: 40, minHeight: 40)
+            .frame(width: design.letterCellSize, height: design.letterCellSize)  // Use design system size
             .accessibilityLabel("Letter \(letter), frequency \(frequency)")
             .accessibilityHint(getAccessibilityHint())
         }
@@ -114,11 +114,11 @@ struct GuessLetterCell: View {
                 
                 // Letter - centered in the cell
                 Text(String(letter))
-                    .font(fonts.guessLetterCell())
+                    .font(fonts.guessLetterCellForSize(design.currentScreenSize))  // Updated to use responsive font
                     .foregroundColor(textColor)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(minWidth: 36, minHeight: 36)
+            .frame(width: design.letterCellSize, height: design.letterCellSize)  // Use design system size
             .accessibilityLabel("Letter \(letter)")
             .accessibilityHint(isUsed ? "Already used" : "Tap to guess")
         }

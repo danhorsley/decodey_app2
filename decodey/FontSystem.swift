@@ -29,11 +29,11 @@ struct FontSystem {
     
     // Display text
     func encryptedDisplayText() -> Font {
-        courierNew(size: 18, weight: .regular)
+        courierNew(size: 22, weight: .regular)
     }
     
     func solutionDisplayText() -> Font {
-        courierNew(size: 18, weight: .semibold)
+        courierNew(size: 22, weight: .semibold)
     }
     
     // Hint button
@@ -77,13 +77,28 @@ struct FontSystem {
         let baseSize: CGFloat
         switch screenCategory {
         case .small:
-            baseSize = 20
-        case .medium:
             baseSize = 22
+        case .medium:
+            baseSize = 24
         case .large:
-            baseSize = 24
+            baseSize = 28
         default:
+            baseSize = 28
+        }
+        return courierNew(size: baseSize, weight: .semibold)
+    }
+    
+    func guessLetterCellForSize(_ screenCategory: DesignSystem.ScreenSizeCategory) -> Font {
+        let baseSize: CGFloat
+        switch screenCategory {
+        case .small:
+            baseSize = 22
+        case .medium:
             baseSize = 24
+        case .large:
+            baseSize = 28
+        default:
+            baseSize = 28
         }
         return courierNew(size: baseSize, weight: .semibold)
     }
