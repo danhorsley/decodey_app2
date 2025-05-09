@@ -88,98 +88,249 @@ struct SettingsView: View {
     @ObservedObject var settings: UserSettings
     @Binding var isPresented: Bool
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var authState: AuthState
+    
+    // Local state
+    @State private var showingConfirmation = false
+    @State private var confirmationMessage = ""
+    @State private var confirmationAction: (() -> Void)?
+    @State private var showingAbout = false
+    
+    // Biometric settings
+    private let biometricType = BiometricAuthHelper.shared.getBiometricType()
+    private let biometricName = BiometricAuthHelper.shared.biometricAuthAvailable().1
     
     var body: some View {
-        VStack {
-            // Header
-            HStack {
-                Text("Settings")
-                    .font(.title2.bold())
-                Spacer()
-                Button("Done") {
-                    withAnimation {
-                        isPresented = false
+        NavigationView {
+            Form {
+                // Theme section
+                Section(header: Text("Appearance")) {
+                    Toggle("Dark Mode", isOn: $settings.isDarkMode)
+                    
+                    Toggle("Show Text Helpers", isOn: $settings.showTextHelpers)
+                    
+                    Toggle("Larger Text", isOn: $settings.useAccessibilityTextSize)
+                }
+                
+                // Security section (only for authenticated users)
+                if authState.isAuthenticated {
+                    Section(header: Text("Security")) {
+                        // Only show biometric toggle if available on device
+                        if biometricType != .none {
+                            Toggle(isOn: $settings.useBiometricAuth) {
+                                HStack {
+                                    Image(systemName: biometricType.iconName)
+                                        .foregroundColor(.accentColor)
+                                    Text("Use \(biometricName)")
+                                }
+                            }
+                            .onChange(of: settings.useBiometricAuth) { newValue in
+                                if newValue && biometricType != .none {
+                                    // Attempt to enable biometric auth
+                                    let success = authState.enableBiometricAuth()
+                                    
+                                    if !success {
+                                        // Show error and revert setting
+                                        confirmationMessage = "Failed to enable biometric authentication. Please try again later."
+                                        showingConfirmation = true
+                                        settings.useBiometricAuth = false
+                                    }
+                                }
+                            }
+                            
+                            if settings.useBiometricAuth {
+                                Text("You can use \(biometricName) to log in quickly even when offline.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Button(action: {
+                            confirmationMessage = "Are you sure you want to log out? You will need to log in again."
+                            confirmationAction = { authState.logout() }
+                            showingConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.right.square")
+                                    .foregroundColor(.red)
+                                Text("Log Out")
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                    
+                    // Offline sync section
+                    if settings.isOfflineMode {
+                        Section(header: Text("Offline Status")) {
+                            HStack {
+                                Image(systemName: "wifi.slash")
+                                    .foregroundColor(.orange)
+                                Text("Offline Mode")
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Text("Some features may be limited until you're back online. Your data will sync automatically when a connection is restored.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 4)
+                            
+                            // Display pending operations count
+                            if OfflineSyncService.shared.pendingOperationCount > 0 {
+                                HStack {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                    Text("\(OfflineSyncService.shared.pendingOperationCount) changes pending sync")
+                                }
+                                .font(.subheadline)
+                            }
+                        }
+                    }
+                }
+                
+                // About section
+                Section(header: Text("About")) {
+                    Button(action: {
+                        showingAbout = true
+                    }) {
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.accentColor)
+                            Text("About Decodey")
+                        }
+                    }
+                    
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(settings.appVersion)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Reset to defaults button
+                    Button(action: {
+                        confirmationMessage = "Are you sure you want to reset all settings to defaults?"
+                        confirmationAction = { settings.resetToDefaults() }
+                        showingConfirmation = true
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.counterclockwise")
+                                .foregroundColor(.orange)
+                            Text("Reset to Defaults")
+                                .foregroundColor(.orange)
+                        }
                     }
                 }
             }
-            .padding()
-            
-            // Settings content
-            Form {
-                Section(header: Text("Display")) {
-                    Toggle("Dark Mode", isOn: $settings.isDarkMode)
-                        .onChange(of: settings.isDarkMode) { _ in
-                            // Force view refresh if needed
-                        }
-                    
-                    Toggle("Show Text Helpers", isOn: $settings.showTextHelpers)
-                        .onChange(of: settings.showTextHelpers) { _ in
-                            // Force view refresh if needed
-                        }
-                }
+            .navigationTitle("Settings")
+            .navigationBarItems(trailing: Button("Done") {
+                isPresented = false
+            })
+            .alert(isPresented: $showingConfirmation) {
+                Alert(
+                    title: Text("Confirm"),
+                    message: Text(confirmationMessage),
+                    primaryButton: .destructive(Text("Continue")) {
+                        confirmationAction?()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
-            .padding(.horizontal)
+            .sheet(isPresented: $showingAbout) {
+                AboutView()
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(iOS)
-        .background(Color(UIColor.systemBackground))
-        #elseif os(macOS)
-        .background(Color(NSColor.windowBackgroundColor))
-        #else
-        .background(colorScheme == .dark ? Color.black : Color.white)
-        #endif
-        .cornerRadius(16)
-        .padding()
     }
 }
 
-// Simplified About View
 struct AboutView: View {
-    @Binding var isPresented: Bool
+    @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Text("About decodey")
-                    .font(.title2.bold())
-                Spacer()
-                Button("Done") {
-                    withAnimation {
-                        isPresented = false
-                    }
-                }
-            }
-            .padding()
-            
-            // Content
+        NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("A cryptogram puzzle game where you decrypt famous quotes letter by letter.")
-                        .padding(.horizontal)
-                    
-                    GroupBox(label: Label("How to Play", systemImage: "questionmark.circle")) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("1. Select a letter from the left grid")
-                            Text("2. Guess the original letter")
-                            Text("3. Solve before running out of mistakes!")
+                VStack(alignment: .leading, spacing: 20) {
+                    // App logo and title
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Text("decodey")
+                                .font(.system(size: 36, weight: .bold, design: .monospaced))
+                                .foregroundColor(.accentColor)
+                            
+                            Text("Crack the code!")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
-                        .padding(.vertical, 4)
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                    
+                    // Description
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("About Decodey")
+                            .font(.headline)
+                        
+                        Text("Decodey is a word puzzle game where you decrypt famous quotes by solving a substitution cipher. Each letter in the alphabet has been replaced with another letter, and your job is to figure out which is which!")
+                            .font(.body)
                     }
                     .padding(.horizontal)
+                    
+                    // How to play
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("How to Play")
+                            .font(.headline)
+                        
+                        Text("1. Select an encrypted letter from the left grid")
+                            .font(.body)
+                        
+                        Text("2. Choose what letter you think it represents from the right grid")
+                            .font(.body)
+                        
+                        Text("3. Continue until you've decrypted the entire quote")
+                            .font(.body)
+                        
+                        Text("4. If you get stuck, use a hint token - but be careful, you only have a limited number!")
+                            .font(.body)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Credits
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Credits")
+                            .font(.headline)
+                        
+                        Text("Developed by: Daniel Horsley")
+                            .font(.body)
+                        
+                        Text("Design: Freeform LLC")
+                            .font(.body)
+                        
+                        Text("All quotes are attributed where known and are used for educational and entertainment purposes only.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer()
                 }
+                .padding()
             }
+            .navigationBarTitle("About", displayMode: .inline)
+            .navigationBarItems(trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            })
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(iOS)
-        .background(Color(UIColor.systemBackground))
-        #else
-        .background(Color(NSColor.windowBackgroundColor))
-        #endif
-        .cornerRadius(16)
-        .padding()
     }
 }
+
+// For SwiftUI preview
+#if DEBUG
+struct SettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        SettingsView(settings: UserSettings(), isPresented: .constant(true))
+            .environmentObject(AuthState.shared)
+    }
+}
+#endif
 
 private func toolbarItemPlacement(_ placement: ToolbarPlacement) -> ToolbarItemPlacement {
     #if os(iOS)

@@ -38,19 +38,42 @@ struct ColorSystem {
     // MARK: - Background Colors
     
     func primaryBackground(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.black : Color.white
+        #if os(iOS)
+        return colorScheme == .dark ? Color(UIColor.systemBackground) : Color(UIColor.systemBackground)
+        #elseif os(macOS)
+        return colorScheme == .dark ? Color(NSColor.windowBackgroundColor) : Color(NSColor.windowBackgroundColor)
+        #else
+        return colorScheme == .dark ? Color.black : Color.white
+        #endif
     }
     
     func secondaryBackground(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.95)
+        #if os(iOS)
+        return colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.secondarySystemBackground)
+        #elseif os(macOS)
+        return colorScheme == .dark ? Color(NSColor.controlBackgroundColor) : Color(NSColor.controlBackgroundColor)
+        #else
+        return colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.95)
+        #endif
+    }
+    
+    func tertiaryBackground(for colorScheme: ColorScheme) -> Color {
+        #if os(iOS)
+        return colorScheme == .dark ? Color(UIColor.systemGray6) : Color(UIColor.systemGray6)
+        #elseif os(macOS)
+        return colorScheme == .dark ? Color(NSColor.textBackgroundColor) : Color(NSColor.textBackgroundColor)
+        #else
+        return colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.9)
+        #endif
+    }
+    
+    // MARK: - Border Colors
+    
+    func border(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3)
     }
     
     // MARK: - Game-Specific Colors
-    
-    // Border for letter cells
-    func cellBorder(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3)
-    }
     
     // Encrypted Text & Grid - now combined
     func encryptedColor(for colorScheme: ColorScheme) -> Color {
@@ -113,7 +136,8 @@ struct ColorSystem {
     }
 }
 
-// Extension to create Color from hex string
+// MARK: - Hex Color Extension (if needed)
+// Keep this extension for creating colors from hex strings
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
