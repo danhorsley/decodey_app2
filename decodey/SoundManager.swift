@@ -21,7 +21,7 @@ class SoundManager: ObservableObject {
     }
     
     // MARK: - Sound Types
-    enum SoundType: String {
+    enum SoundType: String, CaseIterable {
         case letterClick = "letter_click"
         case correctGuess = "correct_guess"
         case incorrectGuess = "incorrect_guess"
@@ -37,21 +37,27 @@ class SoundManager: ObservableObject {
     // MARK: - Private Properties
     
     // Audio engine for high performance sound playback
-    private var audioEngine: AVAudioEngine
+    private var audioEngine: AVAudioEngine?
     private var audioPlayers: [SoundType: AVAudioPlayer] = [:]
     private var audioFiles: [SoundType: AVAudioFile] = [:]
     private var audioPlayerNodes: [SoundType: AVAudioPlayerNode] = [:]
+    
+    // Sound file status tracking
+    private var soundsLoaded = false
     
     // Simple queue system to prevent sound overlaps
     private var isPlaying: [SoundType: Bool] = [:]
     private var shouldPlay: Bool {
         // Check system conditions
         #if os(iOS)
-        return isSoundEnabled && !AVAudioSession.sharedInstance().isOtherAudioPlaying
+        return isSoundEnabled
         #else
         return isSoundEnabled
         #endif
     }
+    
+    // Debug flag
+    private let debugMode = true
     
     // MARK: - Initialization
     
@@ -72,20 +78,26 @@ class SoundManager: ObservableObject {
             UserDefaults.standard.set(0.5, forKey: "soundVolume")
         }
         
-        // Initialize audio engine
-        self.audioEngine = AVAudioEngine()
-        
-        // Setup audio session
+        // Setup audio session first
         setupAudioSession()
         
-        // Preload sound files
+        // Initialize audio engine (but don't start it yet)
+        initializeAudioEngine()
+        
+        // Preload sound files if available
         preloadSounds()
         
-        // Configure audio engine
-        setupAudioEngine()
+        // Start the audio engine only if we have loaded sounds
+        if soundsLoaded {
+            startAudioEngine()
+        }
         
         // Register for interruptions
         registerForNotifications()
+        
+        if debugMode {
+            printSoundSetupInfo()
+        }
     }
     
     // MARK: - Public Methods
@@ -93,8 +105,23 @@ class SoundManager: ObservableObject {
     /// Play a sound effect
     /// - Parameter type: The type of sound to play
     func play(_ type: SoundType) {
+        // Debug
+        if debugMode {
+            print("Attempting to play sound: \(type.rawValue)")
+            print("Sound enabled: \(shouldPlay), Already playing: \(isPlaying[type] ?? false)")
+        }
+        
         // Check if sound is enabled and if we're not already playing this sound
-        guard shouldPlay, !(isPlaying[type] ?? false) else { return }
+        guard shouldPlay, !(isPlaying[type] ?? false) else {
+            if debugMode {
+                if !shouldPlay {
+                    print("Sound not played because sounds are disabled")
+                } else {
+                    print("Sound not played because it's already playing")
+                }
+            }
+            return
+        }
         
         // Use queue to safely access audio APIs
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
@@ -103,13 +130,32 @@ class SoundManager: ObservableObject {
             // Mark sound as playing
             self.isPlaying[type] = true
             
+            // Debug
+            if self.debugMode {
+                print("Playing sound: \(type.rawValue)")
+            }
+            
+            // Use simplified method until sound files are available
+            if !self.soundsLoaded {
+                // If no sounds are loaded, just log and handle completion
+                if self.debugMode {
+                    print("No sound files loaded - skipping playback for \(type.rawValue)")
+                }
+                
+                // Simulate sound duration then mark as complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.isPlaying[type] = false
+                }
+                return
+            }
+            
             // Determine which approach to use based on sound type
             if type == .win || type == .lose {
                 // For longer sounds, use AVAudioPlayer
                 self.playWithAudioPlayer(type)
             } else {
-                // For short effects, use AVAudioEngine with player nodes
-                self.playWithAudioEngine(type)
+                // For short effects, use AVAudioPlayer for now
+                self.playWithAudioPlayer(type)
             }
         }
     }
@@ -132,6 +178,32 @@ class SoundManager: ObservableObject {
         }
     }
     
+    /// Test all sounds - useful for debugging
+    func testAllSounds() {
+        print("Testing all sounds...")
+        play(.letterClick)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.play(.correctGuess)
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.play(.incorrectGuess)
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.play(.hint)
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            self.play(.win)
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+            self.play(.lose)
+        }
+    }
+    
     // MARK: - Private Methods
     
     private func setupAudioSession() {
@@ -141,52 +213,128 @@ class SoundManager: ObservableObject {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try audioSession.setActive(true)
+            if debugMode {
+                print("Audio session setup successful")
+            }
         } catch {
             print("Failed to set up audio session: \(error.localizedDescription)")
         }
         #endif
     }
     
-    private func preloadSounds() {
-        // Preload using both methods for flexibility
-        preloadWithAudioPlayers()
-        preloadWithAudioEngine()
-    }
-    
-    private func preloadWithAudioPlayers() {
-        for type in SoundType.allCases {
-            if let path = Bundle.main.path(forResource: type.rawValue, ofType: "wav") {
-                let url = URL(fileURLWithPath: path)
-                do {
-                    let player = try AVAudioPlayer(contentsOf: url)
-                    player.prepareToPlay()
-                    player.volume = volume
-                    audioPlayers[type] = player
-                } catch {
-                    print("Failed to preload sound \(type.rawValue): \(error.localizedDescription)")
-                }
-            } else {
-                print("Sound file not found: \(type.rawValue).wav")
-            }
+    private func initializeAudioEngine() {
+        // Initialize the audio engine
+        audioEngine = AVAudioEngine()
+        if debugMode {
+            print("Audio engine initialized")
         }
     }
     
-    private func preloadWithAudioEngine() {
+    private func preloadSounds() {
+        var foundAnySound = false
+        
+        // Preload using AVAudioPlayer for simplicity
         for type in SoundType.allCases {
-            if let url = Bundle.main.url(forResource: type.rawValue, withExtension: "wav") {
+            if let player = createAudioPlayer(for: type) {
+                audioPlayers[type] = player
+                foundAnySound = true
+            }
+        }
+        
+        // Only if we found at least one sound, try to configure the audio engine
+        if foundAnySound {
+            soundsLoaded = true
+            configureAudioEngine()
+        } else {
+            // Print clear message that no sounds are loaded
+            print("WARNING: No sound files found. Add .wav files to the project with names matching: \(SoundType.allCases.map { $0.rawValue }.joined(separator: ", "))")
+        }
+    }
+    
+    private func createAudioPlayer(for type: SoundType) -> AVAudioPlayer? {
+        // Try multiple paths to find the sound
+        var url: URL?
+        
+        // First try with path directly
+        if let path = Bundle.main.path(forResource: type.rawValue, ofType: "wav") {
+            url = URL(fileURLWithPath: path)
+            if debugMode {
+                print("Found sound directly: \(type.rawValue).wav")
+            }
+        }
+        // Then try in Sounds directory
+        else if let path = Bundle.main.path(forResource: type.rawValue, ofType: "wav", inDirectory: "Sounds") {
+            url = URL(fileURLWithPath: path)
+            if debugMode {
+                print("Found sound from Sounds directory: \(type.rawValue).wav")
+            }
+        }
+        // Finally check if there's a lowercase version
+        else if let path = Bundle.main.path(forResource: type.rawValue.lowercased(), ofType: "wav") {
+            url = URL(fileURLWithPath: path)
+            if debugMode {
+                print("Found sound with lowercase name: \(type.rawValue.lowercased()).wav")
+            }
+        } else {
+            if debugMode {
+                print("Sound file not found: \(type.rawValue).wav")
+            }
+            return nil
+        }
+        
+        // Create player if we found a URL
+        if let url = url {
+            do {
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.prepareToPlay()
+                player.volume = volume
+                return player
+            } catch {
+                print("Failed to create audio player for \(type.rawValue): \(error.localizedDescription)")
+                return nil
+            }
+        }
+        
+        return nil
+    }
+    
+    private func configureAudioEngine() {
+        guard let engine = audioEngine else {
+            print("Audio engine not initialized")
+            return
+        }
+        
+        // Try to set up audio files for engine
+        for type in SoundType.allCases {
+            var url: URL?
+            
+            // Try multiple paths
+            if let foundUrl = Bundle.main.url(forResource: type.rawValue, withExtension: "wav") {
+                url = foundUrl
+            } else if let foundUrl = Bundle.main.url(forResource: type.rawValue, withExtension: "wav", subdirectory: "Sounds") {
+                url = foundUrl
+            } else if let foundUrl = Bundle.main.url(forResource: type.rawValue.lowercased(), withExtension: "wav") {
+                url = foundUrl
+            }
+            
+            if let url = url {
                 do {
                     let file = try AVAudioFile(forReading: url)
                     audioFiles[type] = file
                     
                     // Create player node
                     let playerNode = AVAudioPlayerNode()
-                    audioEngine.attach(playerNode)
+                    engine.attach(playerNode)
                     
                     // Connect to main mixer
-                    audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: file.processingFormat)
+                    engine.connect(playerNode, to: engine.mainMixerNode, format: file.processingFormat)
                     
                     // Store player node
                     audioPlayerNodes[type] = playerNode
+                    
+                    if debugMode {
+                        print("Added audio file to engine: \(type.rawValue)")
+                    }
                 } catch {
                     print("Failed to preload audio file \(type.rawValue): \(error.localizedDescription)")
                 }
@@ -194,41 +342,67 @@ class SoundManager: ObservableObject {
         }
     }
     
-    private func setupAudioEngine() {
+    private func startAudioEngine() {
+        guard let engine = audioEngine, !audioPlayerNodes.isEmpty else {
+            if debugMode {
+                print("Audio engine not started - no player nodes configured")
+            }
+            return
+        }
+        
+        // Start the audio engine
         do {
-            // Start the audio engine
-            try audioEngine.start()
+            try engine.start()
+            if debugMode {
+                print("Audio engine started successfully")
+            }
         } catch {
             print("Failed to start audio engine: \(error.localizedDescription)")
         }
     }
     
     private func playWithAudioPlayer(_ type: SoundType) {
-        guard let player = audioPlayers[type] else { return }
-        
-        // Reset player
-        player.currentTime = 0
-        player.volume = volume
-        
-        // Play sound
-        player.play()
-        
-        // Add completion handler to update state
-        NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: player,
-            queue: .main
-        ) { [weak self] _ in
-            self?.isPlaying[type] = false
+        if let player = audioPlayers[type] {
+            // Debug
+            if debugMode {
+                print("Playing sound with AVAudioPlayer: \(type.rawValue)")
+            }
+            
+            // Reset player
+            player.currentTime = 0
+            player.volume = volume
+            
+            // Play sound
+            player.play()
+            
+            // Use delayed execution to simulate completion handler
+            // This is a simple approach since AVAudioPlayer uses delegate methods instead
+            let duration = player.duration
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { [weak self] in
+                if self?.debugMode == true {
+                    print("Sound completed: \(type.rawValue)")
+                }
+                self?.isPlaying[type] = false
+            }
+        } else {
+            print("⚠️ No audio player found for: \(type.rawValue)")
+            self.isPlaying[type] = false
         }
     }
     
     private func playWithAudioEngine(_ type: SoundType) {
-        guard let playerNode = audioPlayerNodes[type],
+        guard let engine = audioEngine, let playerNode = audioPlayerNodes[type],
               let file = audioFiles[type] else {
             // Fallback to AVAudioPlayer if engine setup failed
+            if debugMode {
+                print("Falling back to AVAudioPlayer for: \(type.rawValue)")
+            }
             playWithAudioPlayer(type)
             return
+        }
+        
+        if debugMode {
+            print("Playing sound with AVAudioEngine: \(type.rawValue)")
         }
         
         // Set volume
@@ -240,6 +414,9 @@ class SoundManager: ObservableObject {
             try playerNode.scheduleFile(file, at: nil) { [weak self] in
                 // Mark as no longer playing when complete
                 DispatchQueue.main.async {
+                    if self?.debugMode == true {
+                        print("Sound completed in audio engine: \(type.rawValue)")
+                    }
                     self?.isPlaying[type] = false
                 }
             }
@@ -286,6 +463,39 @@ class SoundManager: ObservableObject {
         #endif
     }
     
+    // Print debug info
+    private func printSoundSetupInfo() {
+        print("=== Sound Manager Initialization ===")
+        print("Sound enabled: \(isSoundEnabled)")
+        print("Volume: \(volume)")
+        print("Sounds loaded: \(soundsLoaded)")
+        
+        print("\nPreloaded Audio Players:")
+        if audioPlayers.isEmpty {
+            print("No audio players loaded")
+        } else {
+            for (type, _) in audioPlayers {
+                print("- \(type.rawValue): loaded")
+            }
+        }
+        
+        print("\nPreloaded Audio Files:")
+        if audioFiles.isEmpty {
+            print("No audio files loaded")
+        } else {
+            for (type, _) in audioFiles {
+                print("- \(type.rawValue): loaded")
+            }
+        }
+        
+        print("\nAvailable Sound Types:")
+        for type in SoundType.allCases {
+            print("- \(type.rawValue)")
+        }
+        
+        print("==================================")
+    }
+    
     #if os(iOS)
     @objc private func handleInterruption(notification: Notification) {
         guard let info = notification.userInfo,
@@ -304,7 +514,7 @@ class SoundManager: ObservableObject {
                 // Resume audio engine
                 do {
                     try AVAudioSession.sharedInstance().setActive(true)
-                    try audioEngine.start()
+                    startAudioEngine()
                 } catch {
                     print("Failed to restart audio after interruption: \(error.localizedDescription)")
                 }
@@ -314,22 +524,9 @@ class SoundManager: ObservableObject {
     
     @objc private func handleRouteChange(notification: Notification) {
         // Restart engine on route changes to handle Bluetooth switches
-        do {
-            try audioEngine.start()
-        } catch {
-            print("Failed to restart audio after route change: \(error.localizedDescription)")
-        }
+        startAudioEngine()
     }
     #endif
 }
 
-// Extension to make SoundType iterable
-extension SoundManager.SoundType: CaseIterable {}
-
-//
-//  SoundManager.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 08/05/2025.
-//
 

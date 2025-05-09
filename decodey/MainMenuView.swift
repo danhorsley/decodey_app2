@@ -12,6 +12,7 @@ struct MainMenuView: View {
     @State private var showSettings = false
     @State private var showAbout = false
     @State private var isGameActive = true
+    @State private var showWelcome = true
     
     var body: some View {
         NavigationView {
@@ -66,8 +67,21 @@ struct MainMenuView: View {
         #if os(iOS)
         .navigationViewStyle(StackNavigationViewStyle())
         #endif
+        
+        // Welcome screen overlay
+        if showWelcome {
+                        WelcomeScreen(onComplete: {
+                            withAnimation {
+                                showWelcome = false
+                            }
+                        })
+                        .transition(.opacity)
+                        .zIndex(100)
+                    }
     }
-}
+
+    }
+
 
 // Simplified Settings View
 struct SettingsView: View {
