@@ -85,6 +85,11 @@ struct ColorSystem {
         colorScheme == .dark ? Color(hex: "00ed99") : Color(hex: "0042aa")
     }
     
+    
+    func cellBorder(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3)
+    }
+    
     // Selected state
     func selectedBackground(for colorScheme: ColorScheme, isEncrypted: Bool) -> Color {
         if isEncrypted {

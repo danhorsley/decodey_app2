@@ -40,18 +40,24 @@ struct MainMenuView: View {
                         .preferredColorScheme(settings.isDarkMode ? .dark : .light)
                 }
             }
-            .navigationTitle("decodey")
+            // Cross-platform navigation title
             #if os(iOS)
+            .navigationTitle("decodey")
             .navigationBarTitleDisplayMode(.inline)
+            #else
+            .navigationTitle("decodey")
             #endif
+            
+            // Cross-platform toolbar
             .toolbar {
-                ToolbarItem(placement: toolbarItemPlacement(.leading)) {
+                #if os(iOS)
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { isGameActive.toggle() }) {
                         Label("Menu", systemImage: isGameActive ? "line.horizontal.3" : "xmark")
                     }
                 }
                 
-                ToolbarItem(placement: toolbarItemPlacement(.trailing)) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 16) {
                         Button(action: { showSettings = true }) {
                             Image(systemName: "gear")
@@ -62,6 +68,26 @@ struct MainMenuView: View {
                         }
                     }
                 }
+                #else
+                // macOS toolbar items
+                ToolbarItem(placement: .automatic) {
+                    Button(action: { isGameActive.toggle() }) {
+                        Label("Menu", systemImage: isGameActive ? "line.horizontal.3" : "xmark")
+                    }
+                }
+                
+                ToolbarItem(placement: .automatic) {
+                    HStack(spacing: 16) {
+                        Button(action: { showSettings = true }) {
+                            Image(systemName: "gear")
+                        }
+                        
+                        Button(action: { showAbout = true }) {
+                            Image(systemName: "info.circle")
+                        }
+                    }
+                }
+                #endif
             }
         }
         #if os(iOS)
@@ -70,18 +96,16 @@ struct MainMenuView: View {
         
         // Welcome screen overlay
         if showWelcome {
-                        WelcomeScreen(onComplete: {
-                            withAnimation {
-                                showWelcome = false
-                            }
-                        })
-                        .transition(.opacity)
-                        .zIndex(100)
-                    }
+            WelcomeScreen(onComplete: {
+                withAnimation {
+                    showWelcome = false
+                }
+            })
+            .transition(.opacity)
+            .zIndex(100)
+        }
     }
-
-    }
-
+}
 
 // Simplified Settings View
 struct SettingsView: View {
@@ -125,15 +149,21 @@ struct SettingsView: View {
                                 }
                             }
                             .onChange(of: settings.useBiometricAuth) { newValue in
-                                if newValue && biometricType != .none {
-                                    // Attempt to enable biometric auth
-                                    let success = authState.enableBiometricAuth()
-                                    
-                                    if !success {
-                                        // Show error and revert setting
-                                        confirmationMessage = "Failed to enable biometric authentication. Please try again later."
-                                        showingConfirmation = true
-                                        settings.useBiometricAuth = false
+                                // Modern onChange syntax for macOS 14+ and iOS 17+
+                                if #available(iOS 17.0, macOS 14.0, *) {
+                                    // New style already handled by the platform
+                                } else {
+                                    // Handle older platforms
+                                    if newValue && biometricType != .none {
+                                        // Attempt to enable biometric auth
+                                        let success = authState.enableBiometricAuth()
+                                        
+                                        if !success {
+                                            // Show error and revert setting
+                                            confirmationMessage = "Failed to enable biometric authentication. Please try again later."
+                                            showingConfirmation = true
+                                            settings.useBiometricAuth = false
+                                        }
                                     }
                                 }
                             }
@@ -220,10 +250,31 @@ struct SettingsView: View {
                     }
                 }
             }
+            // Cross-platform navigation title
+            #if os(iOS)
             .navigationTitle("Settings")
-            .navigationBarItems(trailing: Button("Done") {
-                isPresented = false
-            })
+            #else
+            .navigationTitle("Settings")
+            #endif
+            
+            // Cross-platform toolbar
+            .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+                #else
+                ToolbarItem {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+                #endif
+            }
+            
+            // Cross-platform alert
             .alert(isPresented: $showingConfirmation) {
                 Alert(
                     title: Text("Confirm"),
@@ -234,6 +285,8 @@ struct SettingsView: View {
                     secondaryButton: .cancel()
                 )
             }
+            
+            // Cross-platform sheet presentation
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
@@ -242,7 +295,8 @@ struct SettingsView: View {
 }
 
 struct AboutView: View {
-    @Environment(\.presentationMode) var presentationMode
+    // Optional binding for presenting as a sheet
+    var isPresented: Binding<Bool>? = nil
     
     var body: some View {
         NavigationView {
@@ -314,10 +368,31 @@ struct AboutView: View {
                 }
                 .padding()
             }
+            // Cross-platform navigation title and done button
+            .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if let isPresented = isPresented {
+                        Button("Done") {
+                            isPresented.wrappedValue = false
+                        }
+                    }
+                }
+                #else
+                ToolbarItem {
+                    if let isPresented = isPresented {
+                        Button("Done") {
+                            isPresented.wrappedValue = false
+                        }
+                    }
+                }
+                #endif
+            }
+            #if os(iOS)
             .navigationBarTitle("About", displayMode: .inline)
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            #else
+            .navigationTitle("About")
+            #endif
         }
     }
 }
@@ -331,39 +406,3 @@ struct SettingsView_Previews: PreviewProvider {
     }
 }
 #endif
-
-private func toolbarItemPlacement(_ placement: ToolbarPlacement) -> ToolbarItemPlacement {
-    #if os(iOS)
-    switch placement {
-    case .leading:
-        return .navigationBarLeading
-    case .trailing:
-        return .navigationBarTrailing
-    default:
-        return .navigationBarTrailing
-    }
-    #else
-    switch placement {
-    case .leading:
-        return .automatic
-    case .trailing:
-        return .automatic
-    default:
-        return .automatic
-    }
-    #endif
-}
-
-// Define an enum for our cross-platform placement
-enum ToolbarPlacement {
-    case leading
-    case trailing
-    case automatic
-}
-//
-//  MainMenuView.swift
-//  decodey
-//
-//  Created by Daniel Horsley on 08/05/2025.
-//
-

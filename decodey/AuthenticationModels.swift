@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import CommonCrypto
 
 // MARK: - Models for Authentication
 
