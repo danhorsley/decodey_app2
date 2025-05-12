@@ -37,7 +37,7 @@ class AuthState: ObservableObject {
     @Published var isOfflineMode = false
     
     // Token management
-    private var accessToken: String?
+    var accessToken: String?
     private var refreshToken: String?
     private var tokenExpiration: Date?
     

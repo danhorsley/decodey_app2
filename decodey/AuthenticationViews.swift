@@ -1,5 +1,8 @@
 import SwiftUI
 import LocalAuthentication
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Utility Extensions for Cross-Platform Support
 
@@ -275,7 +278,6 @@ struct LoginView: View {
                             .foregroundColor(.secondary)
                         
                         TextField("", text: $identifier)
-                            .autocapitalization(.none)
                             .disableAutocorrection(true)
                             .padding()
                             .background(colors.secondaryBackground(for: colorScheme))
@@ -554,7 +556,6 @@ struct SignupView: View {
                                     .foregroundColor(.secondary)
                                 
                                 TextField("", text: $username)
-                                    .autocapitalization(.none)
                                     .disableAutocorrection(true)
                                     .platformOnChange(of: username) { _ in
                                         validateUsername()
@@ -584,8 +585,6 @@ struct SignupView: View {
                                     .foregroundColor(.secondary)
                                 
                                 TextField("", text: $email)
-                                    .autocapitalization(.none)
-                                    .keyboardType(.emailAddress)
                                     .disableAutocorrection(true)
                                     .platformOnChange(of: email) { _ in
                                         validateEmail()
@@ -919,8 +918,6 @@ struct PasswordResetView: View {
                                     .foregroundColor(.secondary)
                                 
                                 TextField("", text: $email)
-                                    .autocapitalization(.none)
-                                    .keyboardType(.emailAddress)
                                     .disableAutocorrection(true)
                                     .padding()
                                     .background(colors.secondaryBackground(for: colorScheme))
